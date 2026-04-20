@@ -1,7 +1,12 @@
 package com.metrobuilder.app;
 
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
+
+import java.net.URL;
 
 /**
  * Der Haupteinstiegspunkt für die Metro Builder Anwendung.
@@ -11,10 +16,17 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // TODO: FXML laden, Model initialisieren, Controller verknüpfen
+        URL fxmlLocation = getClass().getResource("/fxml/main.fxml");
+        if (fxmlLocation == null) {
+            System.err.println("Kritischer Fehler: main.fxml wurde nicht gefunden!");
+            System.exit(1);
+        }
+
+        FXMLLoader loader = new FXMLLoader(fxmlLocation);
+        Parent root = loader.load();
+
         primaryStage.setTitle("Metro Builder");
-        primaryStage.setWidth(800);
-        primaryStage.setHeight(600);
+        primaryStage.setScene(new Scene(root, 800, 600));
         primaryStage.show();
     }
 
