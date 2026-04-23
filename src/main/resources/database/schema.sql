@@ -1,4 +1,3 @@
--- Initiale Datenbank-Struktur für die Metro-Builder Speicherstände
 CREATE TABLE IF NOT EXISTS stations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

@@ -5,10 +5,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import com.metrobuilder.model.Station;
 
-/**
- * Controller für die Hauptansicht.
- * Verbindet die UI (View) mit der Logik/Daten (Model).
- */
 public class MainController {
 
     @FXML

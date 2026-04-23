@@ -8,10 +8,6 @@ import javafx.stage.Stage;
 
 import java.net.URL;
 
-/**
- * Der Haupteinstiegspunkt für die Metro Builder Anwendung.
- * Startet das JavaFX-Framework und initialisiert das MVC-Setup.
- */
 public class Main extends Application {
 
     @Override

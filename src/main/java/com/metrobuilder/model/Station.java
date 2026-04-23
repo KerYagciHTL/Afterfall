@@ -5,10 +5,6 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-/**
- * Model-Klasse für eine Metro-Station.
- * Nutzt JavaFX Properties für Data-Binding (MVC).
- */
 public class Station {
 
     private final IntegerProperty id = new SimpleIntegerProperty(this, "id");
