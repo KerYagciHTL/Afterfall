@@ -10,3 +10,9 @@ CREATE TABLE IF NOT EXISTS lines (
     name TEXT NOT NULL,
     color TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS player_profile (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    username TEXT NOT NULL DEFAULT 'Player',
+    total_playtime_seconds INTEGER NOT NULL DEFAULT 0
+);

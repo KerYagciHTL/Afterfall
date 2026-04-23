@@ -56,3 +56,7 @@ Thumbs.db
 # Database
 *.sqlite
 *.db
+
+
+/target
+.claude/

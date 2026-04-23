@@ -1,5 +1,9 @@
 package com.metrobuilder.app;
 
+import com.metrobuilder.controller.LobbyController;
+import com.metrobuilder.db.DatabaseManager;
+import com.metrobuilder.model.PlayerProfile;
+import com.metrobuilder.model.dao.PlayerProfileDao;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -7,23 +11,41 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.net.URL;
+import java.time.Instant;
 
 public class Main extends Application {
 
+    private PlayerProfile profile;
+    private PlayerProfileDao dao;
+    private Instant sessionStart;
+
+    @Override
+    public void init() {
+        DatabaseManager.initialize();
+        dao = new PlayerProfileDao();
+        profile = dao.load();
+        sessionStart = Instant.now();
+    }
+
     @Override
     public void start(Stage primaryStage) throws Exception {
-        URL fxmlLocation = getClass().getResource("/fxml/sprite_test.fxml");
-        if (fxmlLocation == null) {
-            System.err.println("Kritischer Fehler: sprite_test.fxml wurde nicht gefunden!");
-            System.exit(1);
-        }
-
-        FXMLLoader loader = new FXMLLoader(fxmlLocation);
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/lobby.fxml"));
         Parent root = loader.load();
 
-        primaryStage.setTitle("Sprite Import Test");
-        primaryStage.setScene(new Scene(root, 900, 700));
+        LobbyController controller = loader.getController();
+        controller.setup(profile, primaryStage);
+
+        primaryStage.setTitle("Metro Builder");
+        primaryStage.setScene(new Scene(root, 1280, 800));
         primaryStage.show();
+    }
+
+    @Override
+    public void stop() {
+        long elapsed = Instant.now().getEpochSecond() - sessionStart.getEpochSecond();
+        profile.setTotalPlaytimeSeconds(profile.getTotalPlaytimeSeconds() + elapsed);
+        dao.save(profile);
+        DatabaseManager.shutdown();
     }
 
     public static void main(String[] args) {
