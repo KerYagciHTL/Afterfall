@@ -16,17 +16,17 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        URL fxmlLocation = getClass().getResource("/fxml/main.fxml");
+        URL fxmlLocation = getClass().getResource("/fxml/sprite_test.fxml");
         if (fxmlLocation == null) {
-            System.err.println("Kritischer Fehler: main.fxml wurde nicht gefunden!");
+            System.err.println("Kritischer Fehler: sprite_test.fxml wurde nicht gefunden!");
             System.exit(1);
         }
 
         FXMLLoader loader = new FXMLLoader(fxmlLocation);
         Parent root = loader.load();
 
-        primaryStage.setTitle("Metro Builder");
-        primaryStage.setScene(new Scene(root, 800, 600));
+        primaryStage.setTitle("Sprite Import Test");
+        primaryStage.setScene(new Scene(root, 900, 700));
         primaryStage.show();
     }
 
