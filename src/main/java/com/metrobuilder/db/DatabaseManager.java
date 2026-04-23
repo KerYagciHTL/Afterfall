@@ -35,6 +35,7 @@ public class DatabaseManager {
         try (InputStream is = DatabaseManager.class.getResourceAsStream("/database/schema.sql");
              Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
+            assert is != null;
             String sql = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             // Execute each statement separated by semicolons
             for (String s : sql.split(";")) {

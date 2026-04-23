@@ -1,4 +1,3 @@
--- Initiale Datenbank-Struktur für die Metro-Builder Speicherstände
 CREATE TABLE IF NOT EXISTS stations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -10,4 +9,10 @@ CREATE TABLE IF NOT EXISTS lines (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     color TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS player_profile (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    username TEXT NOT NULL DEFAULT 'Player',
+    total_playtime_seconds INTEGER NOT NULL DEFAULT 0
 );
