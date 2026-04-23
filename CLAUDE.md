@@ -31,8 +31,7 @@ A metro building simulation game developed in JavaFX. It allows players to const
 ### Build & Tooling
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Gradle | 8.7+ | Build Tool | Faster builds than Maven, excellent Kotlin DSL, and top-tier support for JavaFX via plugins. |
-| org.openjfx.javafxplugin | 0.1.0+ | JavaFX Integration | Official Gradle plugin for seamless JavaFX dependency management and running. |
+| Maven | 3.9+ | Build Tool | Actual build tool in use (`pom.xml`). Use `mvn compile`, `mvn javafx:run`. |
 ### Testing
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
