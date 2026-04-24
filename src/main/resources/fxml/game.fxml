@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Separator?>
+<?import com.metrobuilder.view.MapView?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.metrobuilder.controller.GameController"
@@ -12,10 +12,7 @@
 
     <!-- Map area -->
     <center>
-        <StackPane style="-fx-background-color: #0d0d1a;">
-            <Label text="[Map — Task 2]"
-                   style="-fx-text-fill: #333355; -fx-font-size: 20px;"/>
-        </StackPane>
+        <MapView fx:id="mapView" style="-fx-background-color: #0d0d1a;"/>
     </center>
 
     <!-- HUD sidebar -->

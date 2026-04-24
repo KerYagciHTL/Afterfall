@@ -1,13 +1,18 @@
 package com.metrobuilder.view;
 
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Pane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 
 public class MapView extends Pane {
 
-    public void drawStation(double x, double y, String name) {
-        Circle stationCircle = new Circle(x, y, 10, Color.RED);
-        this.getChildren().add(stationCircle);
+    public void placeSprite(WritableImage image, double x, double y, double size) {
+        ImageView iv = new ImageView(image);
+        iv.setFitWidth(size);
+        iv.setFitHeight(size);
+        iv.setPreserveRatio(true);
+        iv.setLayoutX(x);
+        iv.setLayoutY(y);
+        getChildren().add(iv);
     }
 }
