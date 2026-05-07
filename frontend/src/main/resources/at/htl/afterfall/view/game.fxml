@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/23"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="at.htl.afterfall.controller.GameController"
+            style="-fx-background-color: #1c1e26;">
+
+    <top>
+        <ToolBar style="-fx-background-color: #2a2d38; -fx-padding: 5 8 5 8;">
+            <Label fx:id="balanceLabel"
+                   style="-fx-text-fill: #4fc3f7; -fx-font-size: 14; -fx-font-weight: bold; -fx-min-width: 130;"/>
+            <Separator orientation="VERTICAL"/>
+            <Label text="Zuf:" style="-fx-text-fill: #aaa; -fx-font-size: 12;"/>
+            <Label fx:id="satisfactionLabel"
+                   style="-fx-text-fill: #a5d6a7; -fx-font-size: 14; -fx-min-width: 60;"/>
+            <Separator orientation="VERTICAL"/>
+            <Label fx:id="netWorthLabel"
+                   style="-fx-text-fill: #fff176; -fx-font-size: 14; -fx-min-width: 110;"/>
+            <Separator orientation="VERTICAL"/>
+            <Label text="Ticketpreis pro Halt:" style="-fx-text-fill: #ccc; -fx-font-size: 12;"/>
+            <Slider fx:id="ticketSlider" min="0.5" max="5.0" value="1.5"
+                    prefWidth="130" showTickLabels="true" showTickMarks="true"
+                    majorTickUnit="0.5" minorTickCount="0" snapToTicks="true" blockIncrement="0.5"
+                    style="-fx-control-inner-background: #3a3f52;"/>
+            <Label fx:id="ticketPriceLabel"
+                   style="-fx-text-fill: #ffe082; -fx-font-size: 13; -fx-font-weight: bold; -fx-min-width: 55;"/>
+            <Separator orientation="VERTICAL"/>
+            <Button fx:id="pauseButton" text="⏸ Pause" onAction="#onPause"
+                    style="-fx-background-color: #455a64; -fx-text-fill: white; -fx-cursor: hand;"/>
+            <Separator orientation="VERTICAL"/>
+            <ToggleButton fx:id="buildStationBtn" text="⊕ Station [S]" onAction="#onBuildStation"
+                          style="-fx-background-color: #37474f; -fx-text-fill: white; -fx-cursor: hand;"/>
+            <ToggleButton fx:id="buildTrackBtn" text="⟼ Strecke [T]" onAction="#onBuildTrack"
+                          style="-fx-background-color: #37474f; -fx-text-fill: white; -fx-cursor: hand;"/>
+            <Button text="＋ Route" onAction="#onNewRoute"
+                    style="-fx-background-color: #1565c0; -fx-text-fill: white; -fx-cursor: hand;"/>
+            <Button text="🚇 Zug kaufen" onAction="#onBuyTrain"
+                    style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-cursor: hand;"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <StackPane fx:id="canvasContainer" style="-fx-background-color: #1c1e26;"/>
+    </center>
+
+    <right>
+        <TabPane tabClosingPolicy="UNAVAILABLE" prefWidth="210"
+                 style="-fx-background-color: #2a2d38; -fx-tab-min-width: 95;">
+
+            <!-- ── Routen-Tab ── -->
+            <Tab text="Routen">
+                <VBox spacing="6" style="-fx-background-color: #2a2d38; -fx-padding: 8;" VBox.vgrow="ALWAYS">
+                    <Label fx:id="editStatusLabel"
+                           style="-fx-text-fill: #ffcc80; -fx-font-size: 11; -fx-wrap-text: true;"/>
+                    <ListView fx:id="routeListView"
+                              style="-fx-background-color: #1c1e26; -fx-control-inner-background: #1c1e26;"
+                              VBox.vgrow="ALWAYS"/>
+                    <Button text="✏ Bearbeiten" onAction="#onEditRoute" maxWidth="Infinity"
+                            style="-fx-background-color: #1565c0; -fx-text-fill: white; -fx-cursor: hand;"/>
+                    <Button text="Ein/Ausschalten" onAction="#onToggleRoute" maxWidth="Infinity"
+                            style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-cursor: hand;"/>
+                    <Button text="Route löschen" onAction="#onDeleteRoute" maxWidth="Infinity"
+                            style="-fx-background-color: #b71c1c; -fx-text-fill: white; -fx-cursor: hand;"/>
+                    <Separator/>
+                    <Label text="Rechtsklick+Drag = Kamera" style="-fx-text-fill: #555; -fx-font-size: 10;"/>
+                    <Label text="Scroll = Zoom  |  SPACE = Pause" style="-fx-text-fill: #555; -fx-font-size: 10;"/>
+                    <Label text="S = Station  |  T = Strecke  |  ESC" style="-fx-text-fill: #555; -fx-font-size: 10;"/>
+                    <Label text="Strg+S = Speichern" style="-fx-text-fill: #555; -fx-font-size: 10;"/>
+                </VBox>
+            </Tab>
+
+            <!-- ── Züge-Tab ── -->
+            <Tab text="Züge">
+                <VBox spacing="6" style="-fx-background-color: #2a2d38; -fx-padding: 8;" VBox.vgrow="ALWAYS">
+                    <ListView fx:id="trainListView"
+                              style="-fx-background-color: #1c1e26; -fx-control-inner-background: #1c1e26;"
+                              VBox.vgrow="ALWAYS"/>
+                    <Button text="Route zuweisen" onAction="#onAssignTrain" maxWidth="Infinity"
+                            style="-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-cursor: hand;"/>
+                    <Button text="Route entfernen" onAction="#onUnassignTrain" maxWidth="Infinity"
+                            style="-fx-background-color: #546e7a; -fx-text-fill: white; -fx-cursor: hand;"/>
+                    <Button text="Zug verkaufen" onAction="#onSellTrain" maxWidth="Infinity"
+                            style="-fx-background-color: #b71c1c; -fx-text-fill: white; -fx-cursor: hand;"/>
+                </VBox>
+            </Tab>
+
+        </TabPane>
+        </VBox>
+    </right>
+
+</BorderPane>
