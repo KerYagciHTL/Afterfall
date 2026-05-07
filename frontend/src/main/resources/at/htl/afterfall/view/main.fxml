@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Label?>
+
+<BorderPane xmlns="http://javafx.com/javafx/23"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="at.htl.afterfall.controller.MainController"
+            onKeyPressed="#onKeyPressed"
+            focusTraversable="true">
+
+    <center>
+        <VBox alignment="CENTER" spacing="16" style="-fx-padding: 40;">
+            <Label text="Afterfall"
+                   style="-fx-font-size: 48px; -fx-font-weight: bold;"/>
+            <Label fx:id="balanceLabel"
+                   style="-fx-font-size: 18px;"/>
+            <Label fx:id="satisfactionLabel"
+                   style="-fx-font-size: 18px;"/>
+            <Label fx:id="netWorthLabel"
+                   style="-fx-font-size: 18px;"/>
+        </VBox>
+    </center>
+
+</BorderPane>
