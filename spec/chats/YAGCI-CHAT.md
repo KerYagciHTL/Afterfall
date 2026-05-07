@@ -1,0 +1,1 @@
+User: Lies dir im spec Ordner und im CLAUDE.md alles durch und implementiere ein basic frontend und backend Ordner. Es muss nichts großes sein einfach ein initial commit. Backend soll basic dockerfile haben. Bei fragen gerne Fragen!
