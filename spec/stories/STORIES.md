@@ -34,7 +34,7 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 * **US 4.1 - Passagier-Generierung:** Als Spieler möchte ich, dass die Stadt kontinuierlich Passagiere mit einem spezifischen Zielort generiert, die zu den Stationen laufen.
 * **US 4.2 - Intelligente Wegfindung:** Als Spieler möchte ich, dass Passagiere automatisch den kürzesten Weg zu ihrem Ziel finden und dabei selbstständig zwischen verschiedenen Linien umsteigen.
 * **US 4.3 - Darstellung an Stationen:** Als Spieler möchte ich an den Stationen sehen können, wie viele Passagiere dort warten, sortiert nach ihren Zielorten, um Engpässe zu erkennen.
-* **US 4.4 - Boarding:** Als Spieler möchte ich, dass wartende Passagiere in eintreffende Züge einsteigen (Züge haben zwar unbegrenzte Kapazität, aber die Simulation muss dies abbilden) und am Ziel aussteigen.
+* **US 4.4 - Boarding (Kapazitätslimit):** Als Spieler möchte ich, dass wartende Passagiere in eintreffende Züge einsteigen, bis die maximale Kapazität des jeweiligen Zugtyps erreicht ist. Die Stationen bieten unbegrenzt Platz für wartende Passagiere und unbegrenzt viele Gleise für Züge, aber volle Züge müssen die restlichen Passagiere am Bahnsteig zurücklassen.
 
 ## Epic 5: Wirtschaft & Ticketsystem
 *Preise, Einnahmen und Net Worth.*

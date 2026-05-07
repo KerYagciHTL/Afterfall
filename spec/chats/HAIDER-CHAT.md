@@ -20,7 +20,7 @@
 * **Genre:** Pausierbares Endlos-Aufbauspiel (ohne klassischen "Game Over" State).
 * **Bau-System:** Freies Platzieren, keine Kollisionsabfrage bei Schienen, keine Signale (Keep it simple).
 * **Wirtschaft:** Einnahmen durch Passagiere (Ticketpreis pro Station), Ausgaben durch Bau und laufende Zug-Betriebskosten. Schulden verhindern Neubau.
-* **Passagiere:** Intelligente Wegfindung (Shortest Path) inkl. Umsteigen.
+* **Passagiere:** Intelligente Wegfindung (Shortest Path) inkl. Umsteigen. Züge haben ein maximales Kapazitätslimit (pro Typ definiert), Stationen hingegen haben unbegrenzte Wartekapazität und unbegrenzt viele Gleise.
 * **Tech-Stack:** 
   * Build-Tool: Maven (Multi-Module mit Root-POM)
   * Backend: Spring Boot (Java 21)
