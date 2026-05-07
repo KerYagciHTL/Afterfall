@@ -1,0 +1,39 @@
+## Java / JavaFX / Build-Output
+build/
+target/
+out/
+bin/
+dist/
+
+## Gradle / Maven / Wrapper caches
+.gradle/
+.mvn/
+
+## IDEs
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+## OS / Finder / Explorer
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+## Logs / Crash dumps
+*.log
+hs_err_pid*
+replay_pid*
+
+## Lokale Konfigurationen / Secrets
+.env
+.env.*
+local.properties
+*.local
+
+## Projekt-/Assistenten-Dateien, die lokal bleiben sollen
+CLAUDE.md
+
+
