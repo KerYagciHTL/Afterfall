@@ -36,9 +36,18 @@ public class PassengerSimulation {
     private void spawnPassenger() {
         List<Station> stations = world.getStations();
         if (stations.size() < 2) return;
-        Station origin = stations.get(rng.nextInt(stations.size()));
+        for (Station origin : stations) {
+            spawnFrom(origin, stations);
+        }
+    }
+
+    private void spawnFrom(Station origin, List<Station> stations) {
         Station dest;
-        do { dest = stations.get(rng.nextInt(stations.size())); } while (dest == origin);
+        int attempts = 0;
+        do {
+            dest = stations.get(rng.nextInt(stations.size()));
+        } while (dest == origin && ++attempts < 10);
+        if (dest == origin) return;
 
         List<Station> path = pathFinder.findPath(origin, dest);
         if (path.isEmpty()) return;

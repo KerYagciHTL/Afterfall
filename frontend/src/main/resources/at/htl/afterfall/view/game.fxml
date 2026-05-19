@@ -40,7 +40,7 @@
                     <Label fx:id="netWorthLabel" styleClass="stat-value"
                            style="-fx-text-fill: #ffd54f;"/>
                 </HBox>
-                <Label text="Nettowert" styleClass="stat-label"/>
+                <Label text="Unternehmenswert" styleClass="stat-label"/>
             </VBox>
 
             <!-- Spacer schiebt Buttons nach rechts -->
