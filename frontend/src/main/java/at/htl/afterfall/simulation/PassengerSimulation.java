@@ -97,28 +97,31 @@ public class PassengerSimulation {
     }
 
     private void boardAndAlightPassengers(Train train, Station station) {
+        // Aussteigen: alle Onboard-Passagiere mit Ziel = diese Station
+        List<Passenger> alighting = new ArrayList<>();
+        for (Passenger p : train.getOnboardPassengers()) {
+            if (p.getDestination() == station) alighting.add(p);
+        }
+        for (Passenger p : alighting) {
+            train.getOnboardPassengers().remove(p);
+            world.getPassengers().remove(p);
+            world.getEconomy().addBalance(p.getFare());
+            world.getEconomy().addNetWorth(p.getFare());
+        }
+
+        // Einsteigen: wartende Passagiere deren Weg durch diese Station geht
+        int available = train.getType().capacity - train.getOnboardCount();
         List<Passenger> waiting = new ArrayList<>(station.getWaitingPassengers());
-        int capacity  = train.getType().capacity;
-        int available = capacity - train.getOnboardCount();
-        int boarded   = 0;
         for (Passenger p : waiting) {
-            if (boarded >= available) break;
+            if (available <= 0) break;
             List<Station> path = p.getPath();
-            int stationIdx = path.indexOf(station);
-            if (stationIdx >= 0 && stationIdx < path.size() - 1) {
+            int idx = path.indexOf(station);
+            if (idx >= 0 && idx < path.size() - 1) {
                 station.getWaitingPassengers().remove(p);
-                world.getPassengers().remove(p);
-                boarded++;
-            } else if (stationIdx == path.size() - 1) {
-                // Zielstation erreicht → aussteigen + Einnahmen
-                station.getWaitingPassengers().remove(p);
-                world.getPassengers().remove(p);
-                world.getEconomy().addBalance(p.getFare());
-                world.getEconomy().addNetWorth(p.getFare());
-                train.setOnboardCount(Math.max(0, train.getOnboardCount() - 1));
+                train.getOnboardPassengers().add(p);
+                available--;
             }
         }
-        train.setOnboardCount(train.getOnboardCount() + boarded);
     }
 
     private double calcFare(List<Station> path) {
