@@ -5,6 +5,9 @@ import at.htl.afterfall.view.GameView;
 import javafx.animation.AnimationTimer;
 
 public class GameLoop extends AnimationTimer {
+    private static final double MAX_DELTA     = 0.1;  // cap: max 100ms pro Frame
+    private static final double SMOOTH_TIME   = 2.0;  // EMA-Konstante für €/s
+
     private long    lastTime = 0;
     private boolean paused   = false;
 
@@ -26,12 +29,24 @@ public class GameLoop extends AnimationTimer {
     public void handle(long now) {
         if (paused) return;
         if (lastTime == 0) { lastTime = now; return; }
-        double delta = (now - lastTime) / 1_000_000_000.0;
+
+        double delta = Math.min((now - lastTime) / 1_000_000_000.0, MAX_DELTA);
         lastTime = now;
+
+        // Balance vor dem Tick → für Einnahmen-Rate
+        double balanceBefore = world.getEconomy().getBalance();
 
         passengerSim.tick(delta);
         economyEngine.tick(delta);
         satisfactionEngine.tick(delta);
+
+        // EMA für €/s (exponential moving average, 2s-Konstante)
+        double netChange    = world.getEconomy().getBalance() - balanceBefore;
+        double instantRate  = delta > 0 ? netChange / delta : 0;
+        double alpha        = delta / (SMOOTH_TIME + delta);
+        double smoothed     = world.getEconomy().getIncomeRate() * (1 - alpha) + instantRate * alpha;
+        world.getEconomy().setIncomeRate(smoothed);
+
         gameView.render();
     }
 

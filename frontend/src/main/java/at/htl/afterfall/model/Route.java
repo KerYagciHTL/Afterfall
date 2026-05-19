@@ -11,7 +11,8 @@ public class Route {
     private Color color;
     private final ObservableList<Station> stops  = FXCollections.observableArrayList();
     private final ObservableList<Train>   trains = FXCollections.observableArrayList();
-    private final BooleanProperty active = new SimpleBooleanProperty(true);
+    private final BooleanProperty active   = new SimpleBooleanProperty(true);
+    private boolean               circular = false;
 
     public Route(int id, Color color) {
         this.id    = id;
@@ -29,6 +30,9 @@ public class Route {
     public BooleanProperty activeProperty()       { return active; }
     public boolean         isActive()             { return active.get(); }
     public void            setActive(boolean v)   { active.set(v); }
+
+    public boolean isCircular()            { return circular; }
+    public void    setCircular(boolean c)  { this.circular = c; }
 
     public String getColorHex() {
         return String.format("#%02X%02X%02X",

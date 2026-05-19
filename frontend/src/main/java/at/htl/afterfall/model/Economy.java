@@ -7,6 +7,7 @@ public class Economy {
     private final DoubleProperty balance            = new SimpleDoubleProperty(10_000);
     private final DoubleProperty netWorth           = new SimpleDoubleProperty(10_000);
     private final DoubleProperty ticketPricePerStop = new SimpleDoubleProperty(1.5);
+    private final DoubleProperty incomeRate         = new SimpleDoubleProperty(0.0);
 
     public DoubleProperty balanceProperty()            { return balance; }
     public DoubleProperty netWorthProperty()           { return netWorth; }
@@ -19,6 +20,10 @@ public class Economy {
     public void setBalance(double v)            { balance.set(v); }
     public void setNetWorth(double v)           { netWorth.set(v); }
     public void setTicketPricePerStop(double v) { ticketPricePerStop.set(v); }
+
+    public DoubleProperty incomeRateProperty()    { return incomeRate; }
+    public double         getIncomeRate()         { return incomeRate.get(); }
+    public void           setIncomeRate(double v) { incomeRate.set(v); }
 
     public void addBalance(double delta)  { balance.set(balance.get() + delta); }
     public void addNetWorth(double delta) { netWorth.set(netWorth.get() + delta); }

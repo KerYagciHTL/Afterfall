@@ -8,7 +8,7 @@
 ## Projekt: Afterfall (U-Bahn Management & Aufbauspiel)
 
 ### Aktueller Status
-* **Letztes Update:** 08. Mai 2026
+* **Letztes Update:** 19. Mai 2026
 * **Branch:** `frontend/core-implementation`
 * **Abgabe:** 26. Mai 2026 | **Präsentation:** 28. Mai 2026
 
@@ -16,94 +16,109 @@
 
 ### Zuletzt implementiert (diese Session)
 
-#### Fundament & Epic 2 – Infrastruktur-Bau (vollständig)
+#### Modernes UI-Redesign, €/s Anzeige & Performance
 
-**Model-Layer** (`model/`)
-- `GameWorld`, `Station`, `Track`, `Train`, `TrainType` (enum), `Route`, `Passenger`, `Economy`, `Satisfaction`, `SaveGame`
-- Alle Properties via JavaFX `DoubleProperty`, `BooleanProperty`, `ObservableList`
+**Zuletzt**: 19. Mai 2026 – Session 2
 
-**Persistence-Layer** (`persistence/`)
-- `DatabaseManager` – SQLite-Connection + Schema-Init (alle 8 Tabellen per `CREATE TABLE IF NOT EXISTS`)
-- DAOs: `SaveGameDao`, `StationDao`, `TrackDao`, `RouteDao`, `TrainDao`, `EconomyDao`
-- SQLite-Dep in `pom.xml` ergänzt: `org.xerial:sqlite-jdbc:3.47.0.0`
+#### Session 1 – UX-Overhaul & Feature-Ergänzungen
 
-**Simulation-Layer** (`simulation/`)
-- `GameLoop` – `AnimationTimer`-basiert, `togglePause()`, delta-time
-- `PassengerSimulation` – Spawn, BFS-Wegfindung, Zug-Bewegung, Boarding, Revenue bei Ankunft
-- `PathFinder` – BFS über aktive Route-Stops
-- `EconomyEngine` – Betriebskosten-Tick (km × opCostPerKm × delta)
-- `SatisfactionEngine` – Konvergiert zu Zielwert basierend auf Anbindung, Wartezeit, Ticketpreis
+**Fullscreen / Fenster**
+- `MainApp`: `stage.setMaximized(true)` → Spiel startet maximiert
 
-**View-Layer** (`view/`)
-- `GameView extends Canvas` – rendert Strecken, Routen (farbig), Stationen, Züge
-- Kamera: Rechtsklick+Drag, Scroll = Zoom
-- `toWorldX/Y()`, `findStationAt()`, `setHighlightStation()`
+**HUD vergrößert** (`game.fxml`)
+- Toolbar: Padding `10 14 10 14`, alle Key-Labels auf 16–17px hochgesetzt
+- Unterer Border für klare Trennung Canvas/HUD
+- "Zuf:" → "Zufrieden.:" für bessere Lesbarkeit
 
-**Controller** (`controller/`)
-- `GameController` – MVC-Haupt-Controller
-- `BuildMode` enum: `NONE`, `BUILD_STATION`, `BUILD_TRACK`, `BUILD_ROUTE`, `BUY_TRAIN`
-- KeyEvents: SPACE (Pause), ESC (Abbrechen), S/T (Baumodi), Strg+S (Speichern)
+**Ticketpreis 50-Cent-Snap** (doppelt abgesichert)
+- FXML: `snapToTicks=true`, `majorTickUnit=0.5`, `blockIncrement=0.5`
+- Controller: `Platform.runLater`-Listener rundet auf nächste 0.5 als Sicherheitsnetz
 
-**FXML** (`view/game.fxml`)
-- `BorderPane`: HUD-Toolbar (top) + Canvas-StackPane (center) + TabPane-Sidebar (right)
-- Sidebar Tab "Routen" + Tab "Züge"
+**Währungsformatierung** (`GameController.formatCurrency()`)
+- ≥1.000 → `1.5k €`, ≥1.000.000 → `1.5 Mio €`
+- `balanceLabel` + `netWorthLabel` nutzen `Bindings.createStringBinding` mit formatCurrency
 
-**Tutorial-Start**
-- 2 Stationen (`Hauptbahnhof` / `Stadtzentrum`) + 1 kostenloser Standardzug beim Start
+**Kreis-Routen** (`Route.isCircular`, GameController, GameView, PassengerSimulation)
+- Station darf nur einmal in einer Route sein
+- Ausnahme: erste Station nochmal anklicken (bei ≥2 Stops) → `route.setCircular(true)`
+- GameView: Kreis-Schluss-Segment als gestrichelte Linie (last→first)
+- PassengerSimulation: circular → wrap statt bounce
+- Jeder 2. Zug auf Kreis-Route startet in Gegenrichtung (`isForward=false`, `currentStopIndex=stops.size()-1`)
+
+**Züge ohne Route kaufen**
+- `onBuyTrain()` → öffnet In-Game-Shop-Overlay (3 Karten: Standard / Medium / Super)
+- Kein Route-Pflichtfeld mehr beim Kauf
+- Hover-Effekt auf Karten; disabled-State wenn kein Guthaben
+- ESC schließt Shop-Overlay
+
+**Sidebar überarbeitet** (`game.fxml`)
+- Breite: 210 → 265px
+- Routen-Tab: Zelle zeigt Stops (├/└ Baum) + zugewiesene Züge (mit Richtungspfeil) + ↺-Icon bei Kreis
+- Züge-Tab: Zelle zeigt Typ-Icon + Kapazität + Route (orange ⚠ wenn keine Route)
+- Buttons gruppiert (Ein/Aus + Löschen in einer HBox)
+
+**Toast-System** (ersetzt alle `Alert`-Popups)
+- Rot (`#c62828`) für Fehler, Blau (`#0d6efd`) für Info
+- Erscheint unten rechts über dem Canvas, verblasst nach 3s (PauseTransition + FadeTransition)
+- Spacer-Trick: VBox mit Priority.ALWAYS-Region → Toasts erscheinen immer unten
+
+**BUILD_ROUTE Highlight** (`GameView`)
+- Stationen die bereits in aktiver Route sind → hellgrün
+- Erste Station der Route → türkis (anklickbar zum Kreis schließen)
 
 ---
 
-### Letzte Verbesserungen
+#### Session 2 – Performance, €/s, UI-Redesign (Claude Design)
 
-1. **Ticketpreis-Slider** – 50-Cent-Schritte (`snapToTicks`, `majorTickUnit=0.5`, `blockIncrement=0.5`), Range 0.50–5.00 €, Label "Ticketpreis pro Halt:", dynamischer Wert-Label daneben (`1.50 €` etc.)
+**€/Sekunde Anzeige** (`Economy.incomeRateProperty`, `GameLoop`, `GameController`)
+- EMA (exponential moving average, 2s-Konstante) aus GameLoop für smoothen Wert
+- Grün `#43d494` für Gewinn, Rot `#f05454` für Verlust, Grau bei ≈0
+- UI-Update throttled auf 2×/s via `lastRateUiUpdate` Timestamp
 
-2. **Route bearbeiten** – Route in Sidebar auswählen → "✏ Bearbeiten" klicken → BUILD_ROUTE-Modus mit bestehender Route aktiv → weitere Stationen anklicken erweitert die Route → ESC beendet. Status-Label zeigt aktiven Modus an.
+**Performance-Optimierungen**
+- GameLoop: `MAX_DELTA = 0.1s` cap → verhindert Simulation-Sprünge nach Lag-Spikes
+- SatisfactionEngine: Berechnung jetzt 2×/s statt 60×/s (`INTERVAL = 0.5`) → größtes CPU-Einsparung
+- SatisfactionEngine: `stream()` durch for-Schleifen ersetzt (weniger GC-Druck)
+- GameView: Font-Cache `Map<Integer, Font>` → kein `Font.font()` pro Frame/Station
 
-3. **Züge-Tab (eigenständig)** – Eigene `ListView<Train>` zeigt alle Züge mit Typ + zugewiesener Route (farbig). Aktionen:
-   - "Route zuweisen" → ChoiceDialog
-   - "Route entfernen" → Zug bleibt erhalten, Route = null
-   - "Zug verkaufen" → 50% Rückgabe, Zug wird entfernt
+**GameView visuell** (`GameView.java`)
+- Dot-Grid Hintergrund (Screen-Space, folgt Kamera mit Parallax) 
+- Route-Linien: Glow-Layer (breiter, halbtransparent) + Hauptlinie → 3D-Tiefe
+- Station-Glow für highlighted/in-route Stationen
+- Richtungs-Punkt auf Zügen (kleiner Kreis in Fahrtrichtung)
+- Canvas-Farbe `#0c0d18`, Dot-Grid-Farbe `#16182a`
+- `StrokeLineCap.ROUND` + `StrokeLineJoin.ROUND` → glattere Linien-Ecken
 
-4. **Fix Route löschen** – Züge werden NICHT mehr mitgelöscht. `route = null` gesetzt, Zug bleibt in `world.getTrains()`.
+**Claude Design System** (`game.css` NEU + `game.fxml` Redesign)
+- Vollständige CSS-Datei: `src/main/resources/at/htl/afterfall/view/game.css`
+- Toolbar zu HBox mit „Stat Chips" (VBox-Karten pro Metrik, CSS-Klasse `.stat-chip`)
+- Sidebar: CSS-gestylter TabPane (`.sidebar-tab-pane`), animated hover, selected-underline
+- Buttons: `.btn-primary` (Indigo), `.btn-success` (Grün), `.btn-neutral` (Dunkel), `.btn-danger` (Rot)
+- ToggleButtons: `.toggle-build` mit `:selected` → Indigo-Highlight
+- Slider: blauer Thumb mit Glow-Effekt
+- ListView: transparenter Hintergrund, subtile Selektion
+- Scrollbar: minimalistisch, Indigo thumb on hover
+- `editStatusLabel`: conditional visible/managed via `setStatus()`
 
 ---
 
 ### Bekannte offene Punkte / Bugs
 
-- `game.fxml` hatte ein übrig gebliebenes `</VBox>`-Tag (Zeile 90) → wurde gefixt
-- Zug-Bewegung ist vereinfacht (kein echtes Boarding-Tracking per Zug, vereinfachte Revenue-Berechnung)
-- DELETE-Taste noch nicht implementiert (Selektionssystem fehlt)
+- DELETE-Taste noch nicht implementiert (Selektion fehlt)
 - Speichern (Strg+S) persistiert noch keine Routen/Züge vollständig nach erneutem Laden
 - `PassengerSimulation.boardAndAlightPassengers()` vereinfacht – kein reales Kapazitätslimit pro Zug
-- Kein Hauptmenü / SaveGame-Ladescreen (wurde bewusst auf später verschoben)
+- Kein Hauptmenü / SaveGame-Ladescreen (bewusst auf später verschoben)
+- ChoiceDialog für Route-Zuweisung noch System-Style (nicht custom)
 
 ---
 
 ### Nächste Schritte (Priorität)
 
-1. **Bug-Fix / Verbesserungen letzte Änderungen**
-   - Zug-Bewegung stabiler machen (Bounce an Routen-Enden)
-   - Train-ListView auto-refresh wenn Route sich ändert (ObservableList-Listener statt manuell `.refresh()`)
-   - Route-Bearbeiten: Highlight/Feedback welche Stationen schon in der Route sind
-   - Speichern/Laden vollständig implementieren (Routen, Züge, Route-Stops)
-
-2. **Epic 3 – Zugmanagement verfeinern**
-   - Kapazitätsanzeige pro Zug in der Liste
-   - Zug-Status (fährt / wartet / inaktiv) sichtbar machen
-
-3. **Epic 5 – Wirtschafts-UI**
-   - Einnahmen/Kosten-Übersicht (aktueller Tick)
-   - Warnung bei negativem Kontostand
-
-4. **Epic 1 – Tutorial**
-   - Tutorial-Dialog beim ersten Start
-   - Aufgabe: Stationen verbinden → Abschluss-Feedback
-
-5. **Epic 6 – Stadtwachstum**
-   - Neue Stationen spawnen automatisch über Zeit
-
-6. **Epic 7 – Ranking-Client**
-   - `RankingClient` (java.net.http.HttpClient), `RankingView`
+1. **Stadtwachstum** – neue Stationen spawnen automatisch über Zeit (Epic 6)
+2. **Speichern/Laden** – Routen, Züge, Route-Stops vollständig persistieren
+3. **Ranking-Client** – `RankingClient` (java.net.http.HttpClient), `RankingView` (Epic 7)
+4. **Tutorial-Dialog** beim ersten Start (Epic 1)
+5. **DELETE-Taste** – Station/Strecke selektieren und löschen
 
 ---
 
@@ -115,7 +130,7 @@
 - **Passagiere:** BFS-Wegfindung, Umsteigen möglich; Züge haben Kapazitätslimit, Stationen unbegrenzt
 - **MVC-Pattern:** Schulpflicht – strikt eingehalten
 - **Schulpflicht-Bestandteile (alle implementiert):**
-  - ListView ✅ (Routen + Züge + später SaveGames)
+  - ListView ✅ (Routen + Züge)
   - Property Binding ✅ (balance, satisfaction, netWorth, ticketPrice)
   - EventHandler ✅ (KeyEvents + MouseEvents auf Canvas)
   - JDBC/SQLite ✅

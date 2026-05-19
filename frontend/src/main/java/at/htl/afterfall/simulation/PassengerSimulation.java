@@ -59,10 +59,15 @@ public class PassengerSimulation {
             int    idx   = train.getCurrentStopIndex();
             int    next  = train.isForward() ? idx + 1 : idx - 1;
 
-            if (next < 0 || next >= stops.size()) {
-                train.setForward(!train.isForward());
-                next = train.isForward() ? idx + 1 : idx - 1;
-                if (next < 0 || next >= stops.size()) continue;
+            if (train.getRoute().isCircular()) {
+                if (next < 0)                  next = stops.size() - 1;
+                else if (next >= stops.size()) next = 0;
+            } else {
+                if (next < 0 || next >= stops.size()) {
+                    train.setForward(!train.isForward());
+                    next = train.isForward() ? idx + 1 : idx - 1;
+                    if (next < 0 || next >= stops.size()) continue;
+                }
             }
 
             Station from   = stops.get(idx);
