@@ -54,8 +54,11 @@ public class SatisfactionEngine {
                                : 0;
         double crowdFactor   = totalRoutes > 0 ? (double) crowded / totalRoutes : 0;
 
-        double target = 50 + 30 * connFactor - 20 * waitFactor - 20 * backlogFactor - 10 * crowdFactor;
-        sat.setValue(sat.getValue() + (target - sat.getValue()) * 0.01 * accum);
+        double target  = 50 + 30 * connFactor - 20 * waitFactor - 20 * backlogFactor - 10 * crowdFactor;
+        double current = sat.getValue();
+        double diff    = target - current;
+        double rate    = diff > 0 ? 0.02 : 0.01;
+        sat.setValue(current + diff * rate * accum);
     }
 
     private boolean isConnected(Station s) {

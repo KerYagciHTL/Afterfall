@@ -390,8 +390,8 @@ public class GameController {
         if (name == null || name.isBlank()) return;
         Station s = new Station(world.nextStationId(), name, wx, wy);
         world.getStations().add(s);
-        world.getEconomy().addBalance(-2_000);
-        world.getEconomy().addNetWorth(1_500);
+        world.getEconomy().addBalance(-8_000);
+        world.getEconomy().addNetWorth(6_000);
         if (world.getCurrentSave() != null) {
             int dbId = stationDao.insert(world.getCurrentSave().getId(), s);
             s.setId(dbId);
@@ -421,8 +421,8 @@ public class GameController {
         }
         Track t = new Track(world.nextTrackId(), from, to);
         world.getTracks().add(t);
-        world.getEconomy().addBalance(-500);
-        world.getEconomy().addNetWorth(400);
+        world.getEconomy().addBalance(-2_000);
+        world.getEconomy().addNetWorth(1_600);
         if (world.getCurrentSave() != null) {
             int dbId = trackDao.insert(world.getCurrentSave().getId(), t);
             t.setId(dbId);
