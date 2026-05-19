@@ -43,24 +43,27 @@ public class PassengerSimulation {
     }
 
     private void spawnFrom(Station origin, List<Station> allStations) {
-        // Nur aus erreichbaren Stationen wählen → kein Spawn-Verlust durch unverbundene Stationen
-        List<Station> candidates = allStations.stream()
-            .filter(s -> s != origin)
-            .collect(Collectors.toList());
-        Collections.shuffle(candidates, rng);
-
-        for (Station dest : candidates) {
-            List<Station> path = pathFinder.findPath(origin, dest);
-            if (!path.isEmpty()) {
-                Passenger p = new Passenger(nextId++, origin, dest);
-                p.setPath(path);
-                p.setFare(calcFare(path));
-                origin.getWaitingPassengers().add(p);
-                world.getPassengers().add(p);
-                return;
+        // Nur Ziele auf derselben Route → kein Umstieg nötig, kein falscher Zug
+        List<Station> reachable = new ArrayList<>();
+        for (Route r : world.getRoutes()) {
+            if (!r.isActive() || !r.getStops().contains(origin)) continue;
+            for (Station s : r.getStops()) {
+                if (s != origin && !reachable.contains(s)) reachable.add(s);
             }
         }
-        // Keine erreichbare Zielstation → Station nicht angebunden, kein Spawn
+        if (reachable.isEmpty()) return;
+
+        Collections.shuffle(reachable, rng);
+        Station dest = reachable.get(0);
+
+        List<Station> path = pathFinder.findPath(origin, dest);
+        if (path.isEmpty()) return;
+
+        Passenger p = new Passenger(nextId++, origin, dest);
+        p.setPath(path);
+        p.setFare(calcFare(path));
+        origin.getWaitingPassengers().add(p);
+        world.getPassengers().add(p);
     }
 
     private void moveTrains(double delta) {
@@ -113,11 +116,12 @@ public class PassengerSimulation {
             world.getEconomy().addNetWorth(p.getFare());
         }
 
-        // Einsteigen: wartende Passagiere deren Weg durch diese Station geht
+        // Einsteigen: nur wenn dieser Zug die Zielstation tatsächlich bedient
         int available = train.getType().capacity - train.getOnboardCount();
         List<Passenger> waiting = new ArrayList<>(station.getWaitingPassengers());
         for (Passenger p : waiting) {
             if (available <= 0) break;
+            if (!train.getRoute().getStops().contains(p.getDestination())) continue;
             List<Station> path = p.getPath();
             int idx = path.indexOf(station);
             if (idx >= 0 && idx < path.size() - 1) {
