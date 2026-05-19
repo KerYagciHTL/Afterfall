@@ -13,7 +13,6 @@ public class EconomyDao {
                 if (rs.next()) {
                     economy.setBalance(rs.getDouble("balance"));
                     economy.setNetWorth(rs.getDouble("net_worth"));
-                    economy.setTicketPricePerStop(rs.getDouble("ticket_price"));
                 }
             }
         } catch (SQLException e) {
@@ -32,11 +31,10 @@ public class EconomyDao {
 
     public void save(int saveId, Economy economy, Satisfaction satisfaction) {
         try (PreparedStatement ps = DatabaseManager.getConnection().prepareStatement(
-                "INSERT OR REPLACE INTO economy (save_id, balance, net_worth, ticket_price) VALUES (?, ?, ?, ?)")) {
+                "INSERT OR REPLACE INTO economy (save_id, balance, net_worth, ticket_price) VALUES (?, ?, ?, 0)")) {
             ps.setInt(1, saveId);
             ps.setDouble(2, economy.getBalance());
             ps.setDouble(3, economy.getNetWorth());
-            ps.setDouble(4, economy.getTicketPricePerStop());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);

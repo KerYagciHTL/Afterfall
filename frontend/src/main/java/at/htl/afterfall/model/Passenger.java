@@ -9,6 +9,7 @@ public class Passenger {
     private Station       destination;
     private List<Station> path      = new ArrayList<>();
     private long          spawnTime = System.currentTimeMillis();
+    private double        fare      = 0.0;
 
     public Passenger(int id, Station origin, Station destination) {
         this.id          = id;
@@ -23,4 +24,6 @@ public class Passenger {
     public void          setPath(List<Station> p) { this.path = p; }
     public long          getSpawnTime()     { return spawnTime; }
     public long          getWaitTimeMs()    { return System.currentTimeMillis() - spawnTime; }
+    public double        getFare()          { return fare; }
+    public void          setFare(double f)  { this.fare = f; }
 }

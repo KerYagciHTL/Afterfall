@@ -43,20 +43,6 @@
                 <Label text="Nettowert" styleClass="stat-label"/>
             </VBox>
 
-            <!-- 🎫 Ticketpreis -->
-            <VBox styleClass="stat-chip" spacing="2">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="🎫" style="-fx-font-size: 13;"/>
-                    <Slider fx:id="ticketSlider" min="0.5" max="5.0" value="1.5"
-                            prefWidth="130" showTickLabels="false" showTickMarks="true"
-                            majorTickUnit="0.5" minorTickCount="0"
-                            snapToTicks="true" blockIncrement="0.5"/>
-                    <Label fx:id="ticketPriceLabel"
-                           style="-fx-text-fill: #ffd54f; -fx-font-size: 14; -fx-font-weight: bold; -fx-min-width: 60;"/>
-                </HBox>
-                <Label text="Ticketpreis / Halt" styleClass="stat-label"/>
-            </VBox>
-
             <!-- Spacer schiebt Buttons nach rechts -->
             <Region HBox.hgrow="ALWAYS"/>
 

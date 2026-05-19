@@ -26,8 +26,6 @@ public class GameController {
     @FXML private Label        incomeRateLabel;
     @FXML private Label        satisfactionLabel;
     @FXML private Label        netWorthLabel;
-    @FXML private Slider       ticketSlider;
-    @FXML private Label        ticketPriceLabel;
     @FXML private Button       pauseButton;
     @FXML private ToggleButton buildStationBtn;
     @FXML private ToggleButton buildTrackBtn;
@@ -88,21 +86,6 @@ public class GameController {
             lastRateUiUpdate = now;
             updateIncomeRateLabel(newV.doubleValue());
         });
-        ticketSlider.valueProperty().bindBidirectional(
-            world.getEconomy().ticketPricePerStopProperty()
-        );
-        ticketPriceLabel.textProperty().bind(
-            world.getEconomy().ticketPricePerStopProperty().asString("%.2f €")
-        );
-
-        // 50-Cent-Snap als Sicherheitsnetz zusätzlich zu snapToTicks
-        ticketSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            double snapped = Math.round(newV.doubleValue() * 2.0) / 2.0;
-            if (Math.abs(snapped - newV.doubleValue()) > 0.001) {
-                Platform.runLater(() -> ticketSlider.setValue(snapped));
-            }
-        });
-
         // --- Routen-Liste: erweitertes Layout ---
         routeListView.setItems(world.getRoutes());
         routeListView.setCellFactory(lv -> new ListCell<>() {

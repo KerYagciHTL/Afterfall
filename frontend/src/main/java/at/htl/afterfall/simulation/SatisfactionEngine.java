@@ -3,9 +3,8 @@ package at.htl.afterfall.simulation;
 import at.htl.afterfall.model.*;
 
 public class SatisfactionEngine {
-    private static final double MAX_WAIT  = 120_000.0;
-    private static final double FAIR_PRICE = 1.5;
-    private static final double INTERVAL  = 0.5;   // compute 2× / sec statt 60×
+    private static final double MAX_WAIT = 120_000.0;
+    private static final double INTERVAL = 0.5;
 
     private final GameWorld world;
     private double timer = 0;
@@ -21,7 +20,6 @@ public class SatisfactionEngine {
         timer = 0;
 
         Satisfaction sat = world.getSatisfaction();
-        Economy      eco = world.getEconomy();
 
         int total     = world.getStations().size();
         int connected = 0;
@@ -45,10 +43,9 @@ public class SatisfactionEngine {
 
         double connFactor  = total > 0 ? (double) connected / total : 0;
         double waitFactor  = Math.min(avgWait / MAX_WAIT, 1.0);
-        double priceFactor = Math.min(Math.max(0, (eco.getTicketPricePerStop() - FAIR_PRICE) / FAIR_PRICE), 1.0);
         double crowdFactor = totalRoutes > 0 ? (double) crowded / totalRoutes : 0;
 
-        double target = 50 + 30 * connFactor - 20 * waitFactor - 15 * priceFactor - 15 * crowdFactor;
+        double target = 50 + 30 * connFactor - 25 * waitFactor - 15 * crowdFactor;
         sat.setValue(sat.getValue() + (target - sat.getValue()) * 0.01 * accum);
     }
 

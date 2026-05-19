@@ -22,12 +22,6 @@ public class EconomyEngine {
         eco.addNetWorth(-costs);
     }
 
-    public void recordPassengerDelivered(int stops) {
-        double revenue = world.getEconomy().getTicketPricePerStop() * stops;
-        world.getEconomy().addBalance(revenue);
-        world.getEconomy().addNetWorth(revenue);
-    }
-
     private double routeLengthKm(Route route) {
         List<Station> stops = route.getStops();
         double total = 0;

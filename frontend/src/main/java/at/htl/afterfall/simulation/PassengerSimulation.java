@@ -5,6 +5,7 @@ import java.util.*;
 
 public class PassengerSimulation {
     private static final double BASE_SPAWN_INTERVAL = 5.0;
+    private static final double FARE_PER_PX         = 0.15;
 
     private final GameWorld  world;
     private final PathFinder pathFinder;
@@ -28,8 +29,7 @@ public class PassengerSimulation {
 
     private double spawnInterval() {
         double sat      = world.getSatisfaction().getValue() / 100.0;
-        double price    = world.getEconomy().getTicketPricePerStop();
-        double modifier = Math.max(0.5, 1.5 + sat * 0.5 - Math.max(0, (price - 1.5) / 1.5));
+        double modifier = Math.max(0.5, 1.0 + sat);
         return BASE_SPAWN_INTERVAL / modifier;
     }
 
@@ -45,6 +45,7 @@ public class PassengerSimulation {
 
         Passenger p = new Passenger(nextId++, origin, dest);
         p.setPath(path);
+        p.setFare(calcFare(path));
         origin.getWaitingPassengers().add(p);
         world.getPassengers().add(p);
     }
@@ -87,7 +88,6 @@ public class PassengerSimulation {
     }
 
     private void boardAndAlightPassengers(Train train, Station station) {
-        // alight passengers whose next path stop matches this station
         List<Passenger> waiting = new ArrayList<>(station.getWaitingPassengers());
         int capacity = train.getType().capacity;
         int boarded  = 0;
@@ -99,11 +99,18 @@ public class PassengerSimulation {
                 station.getWaitingPassengers().remove(p);
                 world.getPassengers().remove(p);
                 boarded++;
-                // simplified: deliver immediately, earn revenue
-                int stops = path.size() - 1;
-                world.getEconomy().addBalance(world.getEconomy().getTicketPricePerStop() * stops);
-                world.getEconomy().addNetWorth(world.getEconomy().getTicketPricePerStop() * stops);
+                world.getEconomy().addBalance(p.getFare());
+                world.getEconomy().addNetWorth(p.getFare());
             }
         }
+    }
+
+    private double calcFare(List<Station> path) {
+        double dist = 0;
+        for (int i = 0; i < path.size() - 1; i++) {
+            Station a = path.get(i), b = path.get(i + 1);
+            dist += Math.hypot(b.getX() - a.getX(), b.getY() - a.getY());
+        }
+        return Math.max(10.0, dist * FARE_PER_PX);
     }
 }
