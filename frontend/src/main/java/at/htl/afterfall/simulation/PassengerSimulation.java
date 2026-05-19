@@ -2,6 +2,7 @@ package at.htl.afterfall.simulation;
 
 import at.htl.afterfall.model.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PassengerSimulation {
     private static final double BASE_SPAWN_INTERVAL = 0.667;
@@ -41,22 +42,25 @@ public class PassengerSimulation {
         }
     }
 
-    private void spawnFrom(Station origin, List<Station> stations) {
-        Station dest;
-        int attempts = 0;
-        do {
-            dest = stations.get(rng.nextInt(stations.size()));
-        } while (dest == origin && ++attempts < 10);
-        if (dest == origin) return;
+    private void spawnFrom(Station origin, List<Station> allStations) {
+        // Nur aus erreichbaren Stationen wählen → kein Spawn-Verlust durch unverbundene Stationen
+        List<Station> candidates = allStations.stream()
+            .filter(s -> s != origin)
+            .collect(Collectors.toList());
+        Collections.shuffle(candidates, rng);
 
-        List<Station> path = pathFinder.findPath(origin, dest);
-        if (path.isEmpty()) return;
-
-        Passenger p = new Passenger(nextId++, origin, dest);
-        p.setPath(path);
-        p.setFare(calcFare(path));
-        origin.getWaitingPassengers().add(p);
-        world.getPassengers().add(p);
+        for (Station dest : candidates) {
+            List<Station> path = pathFinder.findPath(origin, dest);
+            if (!path.isEmpty()) {
+                Passenger p = new Passenger(nextId++, origin, dest);
+                p.setPath(path);
+                p.setFare(calcFare(path));
+                origin.getWaitingPassengers().add(p);
+                world.getPassengers().add(p);
+                return;
+            }
+        }
+        // Keine erreichbare Zielstation → Station nicht angebunden, kein Spawn
     }
 
     private void moveTrains(double delta) {
