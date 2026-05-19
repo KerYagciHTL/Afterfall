@@ -260,6 +260,29 @@ public class GameView extends Canvas {
             double ay = y + Math.sin(angle) * arrowLen;
             gc.setFill(Color.color(1, 1, 1, 0.6));
             gc.fillOval(ax - 2.5 / zoom, ay - 2.5 / zoom, 5.0 / zoom, 5.0 / zoom);
+
+            // Auslastungs-Badge über dem Zug
+            int    onboard  = train.getOnboardCount();
+            int    cap      = train.getType().capacity;
+            String badgeTxt = onboard + "/" + cap;
+            double bfs      = Math.max(7, 9.5 / zoom);
+            double bpadX    = 4.5 / zoom;
+            double bpadY    = 2.0 / zoom;
+            double bw       = badgeTxt.length() * bfs * 0.62 + bpadX * 2;
+            double bh       = bfs + bpadY * 2;
+            double bx       = x - bw / 2.0;
+            double by       = y - TRAIN_RADIUS - bh - 4.0 / zoom;
+            double barc     = 3.5 / zoom;
+            double ratio    = cap > 0 ? (double) onboard / cap : 0;
+            Color  badgeBg  = ratio >= 0.9 ? Color.rgb(183, 28, 28, 0.92)
+                            : ratio >= 0.5 ? Color.rgb(230, 120, 0, 0.92)
+                            :                Color.rgb(27, 94, 32, 0.92);
+            gc.setFill(badgeBg);
+            gc.fillRoundRect(bx, by, bw, bh, barc, barc);
+            gc.setFont(getCachedFont(bfs));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.setFill(Color.WHITE);
+            gc.fillText(badgeTxt, x, by + bh - bpadY - 0.5 / zoom);
         }
     }
 

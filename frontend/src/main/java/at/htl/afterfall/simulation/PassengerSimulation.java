@@ -98,20 +98,27 @@ public class PassengerSimulation {
 
     private void boardAndAlightPassengers(Train train, Station station) {
         List<Passenger> waiting = new ArrayList<>(station.getWaitingPassengers());
-        int capacity = train.getType().capacity;
-        int boarded  = 0;
+        int capacity  = train.getType().capacity;
+        int available = capacity - train.getOnboardCount();
+        int boarded   = 0;
         for (Passenger p : waiting) {
-            if (boarded >= capacity) break;
+            if (boarded >= available) break;
             List<Station> path = p.getPath();
             int stationIdx = path.indexOf(station);
             if (stationIdx >= 0 && stationIdx < path.size() - 1) {
                 station.getWaitingPassengers().remove(p);
                 world.getPassengers().remove(p);
                 boarded++;
+            } else if (stationIdx == path.size() - 1) {
+                // Zielstation erreicht → aussteigen + Einnahmen
+                station.getWaitingPassengers().remove(p);
+                world.getPassengers().remove(p);
                 world.getEconomy().addBalance(p.getFare());
                 world.getEconomy().addNetWorth(p.getFare());
+                train.setOnboardCount(Math.max(0, train.getOnboardCount() - 1));
             }
         }
+        train.setOnboardCount(train.getOnboardCount() + boarded);
     }
 
     private double calcFare(List<Station> path) {

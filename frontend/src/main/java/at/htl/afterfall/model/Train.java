@@ -11,6 +11,7 @@ public class Train {
     private double  position         = 0.0;
     private int     currentStopIndex = 0;
     private boolean forward          = true;
+    private int     onboardCount     = 0;
 
     public Train(int id, TrainType type) {
         this.id   = id;
@@ -33,4 +34,6 @@ public class Train {
     public void    setCurrentStopIndex(int i){ this.currentStopIndex = i; }
     public boolean isForward()               { return forward; }
     public void    setForward(boolean f)     { this.forward = f; }
+    public int     getOnboardCount()         { return onboardCount; }
+    public void    setOnboardCount(int n)    { this.onboardCount = n; }
 }
