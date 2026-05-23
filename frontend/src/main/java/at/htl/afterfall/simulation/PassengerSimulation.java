@@ -54,7 +54,6 @@ public class PassengerSimulation {
 
         // Einzugsgebiet: isolierte Stationen spawnen öfter als dicht gepackte
         double avgDist = 0;
-        List<Station> allStations = world.getStations();
         for (Station s : allStations) {
             if (s == origin) continue;
             avgDist += Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
