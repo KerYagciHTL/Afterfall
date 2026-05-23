@@ -3,10 +3,14 @@ package at.htl.afterfall.controller;
 import at.htl.afterfall.model.*;
 import at.htl.afterfall.persistence.*;
 import at.htl.afterfall.simulation.GameLoop;
+import at.htl.afterfall.tutorial.TutorialManager;
+import at.htl.afterfall.tutorial.TutorialOverlay;
 import at.htl.afterfall.util.ColorGenerator;
 import at.htl.afterfall.view.GameView;
 import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.event.Event;
@@ -60,6 +64,9 @@ public class GameController {
     private Region toastSpacer;
     private VBox trainShopOverlay = null;
     private long lastRateUiUpdate = 0;
+    private TutorialManager tutorialManager;
+    private TutorialOverlay tutorialOverlay;
+    private Timeline        tutorialTimer;
 
     private static final double TRACK_BUILD_COST = 2_000;
     private static final double TRACK_NET_WORTH_GAIN = 1_600;
@@ -565,7 +572,39 @@ public class GameController {
         world.getStations().addAll(s1, s2);
         Train startTrain = new Train(world.nextTrainId(), TrainType.STANDARD);
         world.getTrains().add(startTrain);
+
+        tutorialManager = new TutorialManager();
+        tutorialOverlay = new TutorialOverlay(tutorialManager, this::advanceTutorial, this::skipTutorial);
+        canvasContainer.getChildren().add(tutorialOverlay);
+
+        tutorialTimer = new Timeline(new KeyFrame(Duration.millis(500), e -> checkTutorial()));
+        tutorialTimer.setCycleCount(Timeline.INDEFINITE);
+        tutorialTimer.play();
+
         gameView.render();
+    }
+
+    private void checkTutorial() {
+        if (tutorialManager == null || !tutorialManager.isActive()) return;
+        if (tutorialManager.check(world)) {
+            tutorialOverlay.refresh();
+            // Kurz zeigen dann automatisch weiter
+            PauseTransition delay = new PauseTransition(Duration.millis(900));
+            delay.setOnFinished(e -> advanceTutorial());
+            delay.play();
+        }
+    }
+
+    private void advanceTutorial() {
+        tutorialManager.advance();
+        tutorialOverlay.refresh();
+        if (!tutorialManager.isActive()) tutorialTimer.stop();
+    }
+
+    private void skipTutorial() {
+        tutorialManager.skip();
+        tutorialOverlay.refresh();
+        tutorialTimer.stop();
     }
 
     // ─── Canvas-Klick ─────────────────────────────────────────────────────────
