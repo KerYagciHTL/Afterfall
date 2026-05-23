@@ -8,8 +8,9 @@ public class GameLoop extends AnimationTimer {
     private static final double MAX_DELTA     = 0.1;  // cap: max 100ms pro Frame
     private static final double SMOOTH_TIME   = 2.0;  // EMA-Konstante für €/s
 
-    private long    lastTime = 0;
-    private boolean paused   = false;
+    private long    lastTime        = 0;
+    private boolean paused          = false;
+    private int     speedMultiplier = 1;
 
     private final GameWorld           world;
     private final GameView            gameView;
@@ -30,17 +31,18 @@ public class GameLoop extends AnimationTimer {
         if (paused) return;
         if (lastTime == 0) { lastTime = now; return; }
 
-        double delta = Math.min((now - lastTime) / 1_000_000_000.0, MAX_DELTA);
+        double delta       = Math.min((now - lastTime) / 1_000_000_000.0, MAX_DELTA);
         lastTime = now;
+        double scaledDelta = delta * speedMultiplier;
 
         // Balance vor dem Tick → für Einnahmen-Rate
         double balanceBefore = world.getEconomy().getBalance();
 
-        passengerSim.tick(delta);
-        economyEngine.tick(delta);
-        satisfactionEngine.tick(delta);
+        passengerSim.tick(scaledDelta);
+        economyEngine.tick(scaledDelta);
+        satisfactionEngine.tick(scaledDelta);
 
-        // EMA für €/s (exponential moving average, 2s-Konstante)
+        // EMA für €/s — gegen reale Zeit (nicht Spielzeit), damit Label stabil bleibt
         double netChange    = world.getEconomy().getBalance() - balanceBefore;
         double instantRate  = delta > 0 ? netChange / delta : 0;
         double alpha        = delta / (SMOOTH_TIME + delta);
@@ -55,5 +57,7 @@ public class GameLoop extends AnimationTimer {
         if (!paused) lastTime = 0;
     }
 
-    public boolean isPaused() { return paused; }
+    public boolean isPaused()              { return paused; }
+    public int     getSpeedMultiplier()    { return speedMultiplier; }
+    public void    setSpeedMultiplier(int m) { speedMultiplier = Math.max(1, m); }
 }

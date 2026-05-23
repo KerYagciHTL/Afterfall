@@ -28,6 +28,7 @@ public class GameController {
     @FXML private Label        satisfactionLabel;
     @FXML private Label        netWorthLabel;
     @FXML private Button       pauseButton;
+    @FXML private Button       speedButton;
     @FXML private ToggleButton buildStationBtn;
     @FXML private ToggleButton buildTrackBtn;
     @FXML private StackPane    canvasContainer;
@@ -632,6 +633,17 @@ public class GameController {
     private void togglePause() {
         gameLoop.togglePause();
         pauseButton.setText(gameLoop.isPaused() ? "▶  Weiter" : "⏸  Pause");
+    }
+
+    @FXML public void onSpeedToggle() {
+        int next = gameLoop.getSpeedMultiplier() % 3 + 1;  // 1→2→3→1
+        gameLoop.setSpeedMultiplier(next);
+        speedButton.setText("▶▶  " + next + "×");
+        speedButton.setStyle(next > 1
+            ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
+              + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
+              + " -fx-padding: 7 16 7 16;"
+            : "");
     }
 
     @FXML public void onBuildStation() {
