@@ -1,0 +1,298 @@
+/* ═══════════════════════════════════════════════════════════════
+   Afterfall — Game Stylesheet   (Claude Design Language)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Root / Global ─────────────────────────────────── */
+.root {
+    -fx-font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    -fx-background-color: #0c0d18;
+}
+
+/* ── Game Toolbar (HBox top bar) ───────────────────── */
+.game-toolbar {
+    -fx-background-color: #0d0e1b;
+    -fx-padding: 10 16 10 16;
+    -fx-border-color: transparent transparent #1e2040 transparent;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 14, 0, 0, 4);
+}
+
+/* ── Stat Chips ─────────────────────────────────────── */
+.stat-chip {
+    -fx-background-color: #151728;
+    -fx-background-radius: 10;
+    -fx-border-color: #252848;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-padding: 7 15 7 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 6, 0, 0, 2);
+}
+
+.stat-value {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #d8dcf5;
+}
+
+.stat-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #8a90c0;
+    -fx-font-weight: normal;
+}
+
+/* ── Income Rate Label ──────────────────────────────── */
+.income-positive {
+    -fx-text-fill: #43d494;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.income-negative {
+    -fx-text-fill: #f05454;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.income-neutral {
+    -fx-text-fill: #7078a8;
+    -fx-font-size: 11px;
+}
+
+/* ── Buttons ────────────────────────────────────────── */
+.btn-primary {
+    -fx-background-color: #3d5af1;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 18 8 18;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+.btn-primary:hover {
+    -fx-background-color: #5068f5;
+    -fx-effect: dropshadow(gaussian, rgba(61,90,241,0.5), 10, 0, 0, 2);
+}
+
+.btn-success {
+    -fx-background-color: #1b6e37;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 18 8 18;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.btn-success:hover {
+    -fx-background-color: #27a34f;
+    -fx-effect: dropshadow(gaussian, rgba(39,163,79,0.4), 10, 0, 0, 2);
+}
+
+.btn-neutral {
+    -fx-background-color: #1e2138;
+    -fx-text-fill: #9ea3c8;
+    -fx-font-size: 13px;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-border-color: #2b2f52;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+}
+.btn-neutral:hover {
+    -fx-background-color: #272b47;
+    -fx-text-fill: #c5cae9;
+}
+
+.btn-danger {
+    -fx-background-color: #6b1a1a;
+    -fx-text-fill: #ffcdd2;
+    -fx-font-size: 12px;
+    -fx-padding: 7 12 7 12;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.btn-danger:hover {
+    -fx-background-color: #a12424;
+    -fx-text-fill: white;
+}
+
+/* ── Toggle Buttons (Baumodi) ───────────────────────── */
+.toggle-build {
+    -fx-background-color: #1e2138;
+    -fx-text-fill: #9ea5d0;
+    -fx-font-size: 13px;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-border-color: #2b2f52;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+}
+.toggle-build:hover {
+    -fx-background-color: #252840;
+    -fx-text-fill: #c5cae9;
+}
+.toggle-build:selected {
+    -fx-background-color: #3d5af1;
+    -fx-text-fill: white;
+    -fx-border-color: #5068f5;
+    -fx-effect: dropshadow(gaussian, rgba(61,90,241,0.45), 10, 0, 0, 2);
+}
+
+/* ── Sidebar / TabPane ──────────────────────────────── */
+.sidebar-tab-pane {
+    -fx-background-color: #0d0e1b;
+    -fx-border-color: transparent transparent transparent #1e2040;
+    -fx-border-width: 1;
+    -fx-tab-min-width: 120px;
+}
+.sidebar-tab-pane .tab-header-area {
+    -fx-background-color: #111223;
+    -fx-padding: 0;
+}
+.sidebar-tab-pane .tab-header-background {
+    -fx-background-color: #111223;
+}
+.sidebar-tab-pane .tab {
+    -fx-background-color: #111223;
+    -fx-text-fill: #8090c0;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 18 10 18;
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+}
+.sidebar-tab-pane .tab:hover {
+    -fx-background-color: #161828;
+    -fx-text-fill: #9098c8;
+}
+.sidebar-tab-pane .tab:selected {
+    -fx-background-color: #0d0e1b;
+    -fx-text-fill: #b0b8e8;
+    -fx-border-color: transparent transparent #3d5af1 transparent;
+    -fx-border-width: 0 0 2 0;
+}
+.sidebar-tab-pane .tab-content-area {
+    -fx-background-color: #0d0e1b;
+}
+
+/* ── ListView ────────────────────────────────────────── */
+.list-view {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+.list-view .viewport {
+    -fx-background-color: transparent;
+}
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 0 0 4 0;
+}
+.list-cell:empty {
+    -fx-background-color: transparent;
+}
+.list-cell:selected {
+    -fx-background-color: #2d3158;
+    -fx-background-radius: 6;
+}
+.list-cell:focused {
+    -fx-background-color: transparent;
+}
+.list-cell:focused:selected {
+    -fx-background-color: #2d3158;
+    -fx-background-radius: 6;
+}
+
+/* ── Slider ──────────────────────────────────────────── */
+.slider {
+    -fx-padding: 2 0 2 0;
+}
+.slider .track {
+    -fx-background-color: #252840;
+    -fx-background-radius: 4;
+    -fx-pref-height: 4;
+}
+.slider .thumb {
+    -fx-background-color: #3d5af1;
+    -fx-background-radius: 10;
+    -fx-pref-width: 16;
+    -fx-pref-height: 16;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(61,90,241,0.6), 8, 0, 0, 0);
+}
+.slider .thumb:hover {
+    -fx-background-color: #5068f5;
+    -fx-scale-x: 1.15;
+    -fx-scale-y: 1.15;
+}
+.slider .thumb:pressed {
+    -fx-background-color: #7b92ff;
+}
+.slider .axis {
+    -fx-tick-label-fill: #8090b8;
+    -fx-font-size: 9px;
+}
+
+/* ── Separator ───────────────────────────────────────── */
+.separator .line {
+    -fx-border-color: #1e2040;
+    -fx-background-color: #1e2040;
+}
+
+/* ── Edit-Status Label ───────────────────────────────── */
+.edit-status {
+    -fx-text-fill: #e8c468;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-wrap-text: true;
+    -fx-background-color: #1e1a0e;
+    -fx-background-radius: 6;
+    -fx-padding: 6 10 6 10;
+}
+
+/* ── Hint Labels in Sidebar ──────────────────────────── */
+.section-hint {
+    -fx-text-fill: #7888c0;
+    -fx-font-size: 11px;
+}
+
+/* ── Sidebar Action Buttons ──────────────────────────── */
+.sidebar-btn {
+    -fx-background-radius: 8;
+    -fx-font-size: 13px;
+    -fx-padding: 9 0 9 0;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+
+/* ── Pause Button aktiv ──────────────────────────────── */
+.pause-active {
+    -fx-background-color: #d4a017;
+    -fx-text-fill: #0d0e1b;
+    -fx-font-weight: bold;
+}
+
+/* ── Scroll Bar (global) ─────────────────────────────── */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+.scroll-bar .thumb {
+    -fx-background-color: #252848;
+    -fx-background-radius: 4;
+}
+.scroll-bar .thumb:hover {
+    -fx-background-color: #3d5af1;
+}
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}

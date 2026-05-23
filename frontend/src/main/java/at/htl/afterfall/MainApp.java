@@ -11,10 +11,11 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/main.fxml"));
-        Scene scene = new Scene(loader.load(), 1024, 768);
-        stage.setTitle("Afterfall");
+        FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/game.fxml"));
+        Scene scene = new Scene(loader.load(), 1280, 800);
+        stage.setTitle("Afterfall – U-Bahn Manager");
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.show();
     }
 

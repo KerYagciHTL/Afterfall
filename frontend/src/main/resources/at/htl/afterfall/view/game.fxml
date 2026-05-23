@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/23"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="at.htl.afterfall.controller.GameController"
+            stylesheets="@game.css"
+            style="-fx-background-color: #0c0d18;">
+
+    <!-- ═══════════════════ TOP / HUD ════════════════════ -->
+    <top>
+        <HBox styleClass="game-toolbar" alignment="CENTER_LEFT" spacing="10">
+
+            <!-- 💰 Kontostand + €/s -->
+            <VBox styleClass="stat-chip" spacing="2">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="💰" style="-fx-font-size: 15;"/>
+                    <Label fx:id="balanceLabel" styleClass="stat-value"
+                           style="-fx-text-fill: #64b5f6;"/>
+                    <Label fx:id="incomeRateLabel" styleClass="income-neutral" text="±0 €/s"/>
+                </HBox>
+                <Label text="Kontostand" styleClass="stat-label"/>
+            </VBox>
+
+            <!-- 😊 Zufriedenheit -->
+            <VBox styleClass="stat-chip" spacing="2">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="😊" style="-fx-font-size: 15;"/>
+                    <Label fx:id="satisfactionLabel" styleClass="stat-value"
+                           style="-fx-text-fill: #69f0ae;"/>
+                </HBox>
+                <Label text="Zufriedenheit" styleClass="stat-label"/>
+            </VBox>
+
+            <!-- 📈 Nettowert -->
+            <VBox styleClass="stat-chip" spacing="2">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="📈" style="-fx-font-size: 15;"/>
+                    <Label fx:id="netWorthLabel" styleClass="stat-value"
+                           style="-fx-text-fill: #ffd54f;"/>
+                </HBox>
+                <Label text="Unternehmenswert" styleClass="stat-label"/>
+            </VBox>
+
+            <!-- Spacer schiebt Buttons nach rechts -->
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Steuerungs-Buttons -->
+            <Button fx:id="pauseButton" text="⏸  Pause" onAction="#onPause"
+                    styleClass="btn-neutral"/>
+            <Button fx:id="speedButton" text="▶▶  1×" onAction="#onSpeedToggle"
+                    styleClass="btn-neutral"/>
+            <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
+            <ToggleButton fx:id="buildStationBtn" text="⊕  Station" onAction="#onBuildStation"
+                          styleClass="toggle-build"/>
+            <ToggleButton fx:id="buildTrackBtn"   text="⟼  Strecke" onAction="#onBuildTrack"
+                          styleClass="toggle-build"/>
+            <Button text="＋  Route"      onAction="#onNewRoute"  styleClass="btn-primary"/>
+            <Button text="🚇  Zug kaufen" onAction="#onBuyTrain"  styleClass="btn-success"/>
+
+        </HBox>
+    </top>
+
+    <!-- ═══════════════════ CENTER / CANVAS ════════════════ -->
+    <center>
+        <StackPane fx:id="canvasContainer" style="-fx-background-color: #0c0d18;"/>
+    </center>
+
+    <!-- ═══════════════════ RIGHT / SIDEBAR ════════════════ -->
+    <right>
+        <TabPane tabClosingPolicy="UNAVAILABLE" prefWidth="275"
+                 styleClass="sidebar-tab-pane">
+
+            <!-- ── Routen-Tab ── -->
+            <Tab text="  Routen  ">
+                <VBox spacing="8" style="-fx-background-color: #0d0e1b; -fx-padding: 12;"
+                      VBox.vgrow="ALWAYS">
+
+                    <Label fx:id="editStatusLabel" styleClass="edit-status"
+                           managed="false" visible="false"/>
+
+                    <ListView fx:id="routeListView" VBox.vgrow="ALWAYS"
+                              style="-fx-background-color: transparent;"/>
+
+                    <Button text="✏  Bearbeiten" onAction="#onEditRoute"
+                            maxWidth="Infinity" styleClass="btn-primary sidebar-btn"/>
+
+                    <HBox spacing="8">
+                        <Button text="Ein / Aus" onAction="#onToggleRoute"
+                                maxWidth="Infinity" styleClass="btn-neutral sidebar-btn"
+                                HBox.hgrow="ALWAYS"/>
+                        <Button text="🗑  Löschen" onAction="#onDeleteRoute"
+                                maxWidth="Infinity" styleClass="btn-danger sidebar-btn"
+                                HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Separator/>
+                    <Label text="Rechtsklick + Drag  →  Kamera bewegen" styleClass="section-hint"/>
+                    <Label text="Scroll  →  Zoom  •  SPACE  →  Pause" styleClass="section-hint"/>
+                    <Label text="S  →  Station  •  T  →  Strecke  •  R  →  Route  •  ESC  →  Abbrechen" styleClass="section-hint"/>
+                    <Label text="Strg+S  →  Speichern" styleClass="section-hint"/>
+                </VBox>
+            </Tab>
+
+            <!-- ── Züge-Tab ── -->
+            <Tab text="  Züge  ">
+                <VBox spacing="8" style="-fx-background-color: #0d0e1b; -fx-padding: 12;"
+                      VBox.vgrow="ALWAYS">
+
+                    <ListView fx:id="trainListView" VBox.vgrow="ALWAYS"
+                              style="-fx-background-color: transparent;"/>
+
+                    <Button text="Route zuweisen" onAction="#onAssignTrain"
+                            maxWidth="Infinity" styleClass="btn-primary sidebar-btn"/>
+
+                    <HBox spacing="8">
+                        <Button text="Route entfernen" onAction="#onUnassignTrain"
+                                maxWidth="Infinity" styleClass="btn-neutral sidebar-btn"
+                                HBox.hgrow="ALWAYS"/>
+                        <Button text="Verkaufen" onAction="#onSellTrain"
+                                maxWidth="Infinity" styleClass="btn-danger sidebar-btn"
+                                HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                </VBox>
+            </Tab>
+
+        </TabPane>
+    </right>
+
+</BorderPane>

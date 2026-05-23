@@ -1,0 +1,165 @@
+package at.htl.afterfall.simulation;
+
+import at.htl.afterfall.model.*;
+import java.util.*;
+
+public class PassengerSimulation {
+    private static final double BASE_SPAWN_INTERVAL = 0.667;
+    private static final double FARE_PER_PX         = 0.15;
+
+    private final GameWorld  world;
+    private final PathFinder pathFinder;
+    private final Random     rng         = new Random();
+    private double           spawnTimer  = 0;
+    private int              nextId      = 1;
+
+    public PassengerSimulation(GameWorld world) {
+        this.world      = world;
+        this.pathFinder = new PathFinder(world);
+    }
+
+    public void tick(double delta) {
+        moveTrains(delta);
+        spawnTimer += delta;
+        if (spawnTimer >= spawnInterval()) {
+            spawnTimer = 0;
+            spawnPassenger();
+        }
+    }
+
+    private double spawnInterval() {
+        double sat      = world.getSatisfaction().getValue() / 100.0;
+        double modifier = Math.max(0.5, 1.0 + sat);
+        return BASE_SPAWN_INTERVAL / modifier;
+    }
+
+    private void spawnPassenger() {
+        List<Station> stations = world.getStations();
+        if (stations.size() < 2) return;
+        for (Station origin : stations) {
+            spawnFrom(origin, stations);
+        }
+    }
+
+    private void spawnFrom(Station origin, List<Station> allStations) {
+        // Nur Ziele auf derselben Route → kein Umstieg nötig, kein falscher Zug
+        List<Station> reachable = new ArrayList<>();
+        for (Route r : world.getRoutes()) {
+            if (!r.isActive() || !r.getStops().contains(origin)) continue;
+            for (Station s : r.getStops()) {
+                if (s != origin && !reachable.contains(s)) reachable.add(s);
+            }
+        }
+        if (reachable.isEmpty()) return;
+
+        // Einzugsgebiet: isolierte Stationen spawnen öfter als dicht gepackte
+        double avgDist = 0;
+        for (Station s : allStations) {
+            if (s == origin) continue;
+            avgDist += Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
+        }
+        if (allStations.size() > 1) avgDist /= (allStations.size() - 1);
+        double spawnChance = Math.min(avgDist / 250.0, 1.0);
+        if (rng.nextDouble() > spawnChance) return;
+
+        // Ziele weiter entfernt → höheres Gewicht (Nachbarstationen kaum Fahrgäste)
+        double[] weights = new double[reachable.size()];
+        double totalWeight = 0;
+        for (int i = 0; i < reachable.size(); i++) {
+            Station s = reachable.get(i);
+            double dist = Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
+            weights[i] = Math.max(dist, 1.0);
+            totalWeight += weights[i];
+        }
+        double pick = rng.nextDouble() * totalWeight;
+        Station dest = reachable.get(reachable.size() - 1);
+        for (int i = 0; i < reachable.size(); i++) {
+            pick -= weights[i];
+            if (pick <= 0) { dest = reachable.get(i); break; }
+        }
+
+        List<Station> path = pathFinder.findPath(origin, dest);
+        if (path.isEmpty()) return;
+
+        Passenger p = new Passenger(nextId++, origin, dest);
+        p.setPath(path);
+        p.setFare(calcFare(path));
+        origin.getWaitingPassengers().add(p);
+        world.getPassengers().add(p);
+    }
+
+    private void moveTrains(double delta) {
+        for (Train train : world.getTrains()) {
+            if (!train.isActive() || train.getRoute() == null || !train.getRoute().isActive()) continue;
+            List<Station> stops = train.getRoute().getStops();
+            if (stops.size() < 2) continue;
+
+            double speed = 80.0 * train.getType().speedFactor;
+            int    idx   = train.getCurrentStopIndex();
+            int    next  = train.isForward() ? idx + 1 : idx - 1;
+
+            if (train.getRoute().isCircular()) {
+                if (next < 0)                  next = stops.size() - 1;
+                else if (next >= stops.size()) next = 0;
+            } else {
+                if (next < 0 || next >= stops.size()) {
+                    train.setForward(!train.isForward());
+                    next = train.isForward() ? idx + 1 : idx - 1;
+                    if (next < 0 || next >= stops.size()) continue;
+                }
+            }
+
+            Station from   = stops.get(idx);
+            Station to     = stops.get(next);
+            double  segLen = Math.hypot(to.getX() - from.getX(), to.getY() - from.getY());
+            if (segLen < 1) { train.setCurrentStopIndex(next); continue; }
+
+            double progress = train.getPosition() + speed * delta / segLen;
+            if (progress >= 1.0) {
+                train.setPosition(0.0);
+                train.setCurrentStopIndex(next);
+                boardAndAlightPassengers(train, to);
+            } else {
+                train.setPosition(progress);
+            }
+        }
+    }
+
+    private void boardAndAlightPassengers(Train train, Station station) {
+        // Aussteigen: alle Onboard-Passagiere mit Ziel = diese Station
+        List<Passenger> alighting = new ArrayList<>();
+        for (Passenger p : train.getOnboardPassengers()) {
+            if (p.getDestination() == station) alighting.add(p);
+        }
+        for (Passenger p : alighting) {
+            train.getOnboardPassengers().remove(p);
+            world.getPassengers().remove(p);
+            world.getEconomy().addBalance(p.getFare());
+            world.getEconomy().addNetWorth(p.getFare());
+        }
+
+        // Einsteigen: nur wenn dieser Zug die Zielstation tatsächlich bedient
+        int available = train.getType().capacity - train.getOnboardCount();
+        List<Passenger> waiting = new ArrayList<>(station.getWaitingPassengers());
+        for (Passenger p : waiting) {
+            if (available <= 0) break;
+            if (!train.getRoute().getStops().contains(p.getDestination())) continue;
+            List<Station> path = p.getPath();
+            int idx = path.indexOf(station);
+            if (idx >= 0 && idx < path.size() - 1) {
+                station.getWaitingPassengers().remove(p);
+                train.getOnboardPassengers().add(p);
+                available--;
+            }
+        }
+    }
+
+    private double calcFare(List<Station> path) {
+        double dist = 0;
+        for (int i = 0; i < path.size() - 1; i++) {
+            Station a = path.get(i), b = path.get(i + 1);
+            dist += Math.hypot(b.getX() - a.getX(), b.getY() - a.getY());
+        }
+        return Math.max(10.0, dist * FARE_PER_PX);
+    }
+}
