@@ -8,13 +8,61 @@
 ## Projekt: Afterfall (U-Bahn Management & Aufbauspiel)
 
 ### Aktueller Status
-* **Letztes Update:** 19. Mai 2026
+* **Letztes Update:** 23. Mai 2026
 * **Branch:** `frontend/core-implementation`
 * **Abgabe:** 26. Mai 2026 | **Präsentation:** 28. Mai 2026
 
 ---
 
 ### Zuletzt implementiert (diese Session)
+
+#### Session 4 – Simulation, Bugfixes, Tutorial & Stories
+
+**Zuletzt**: 23. Mai 2026 – Session 4
+
+**SatisfactionEngine Redesign** (`simulation/SatisfactionEngine.java`)
+- `backlogFactor` entfernt (hat gute Netze bestraft)
+- Neue Formel: `target = 55 + 25*connFactor + 20*deliveryBonus - 25*waitFactor - 10*emptyFactor`
+- `deliveryBonus = onboard/(onboard+waiting)` – belohnt aktiv fahrende Züge
+- `MAX_WAIT` 20s → 45s; 90%+ erfordert aktives Management (kurze Wartezeiten + alle Routen besetzt)
+- Rate: rise 0.025, fall 0.008 (stabil wenn Netz läuft, kein stetiger Verfall)
+- Max erreichbar: 100% (war 80%)
+
+**PassengerSimulation – distanzbasiertes Spawning** (`simulation/PassengerSimulation.java`)
+- Ziel-Auswahl: gewichtete Zufallsauswahl statt shuffle – Gewicht = Euklidische Distanz origin→dest (entfernte Stationen attraktiver)
+- Spawn-Rate pro Station: `spawnChance = min(avgDistToOthers / 250px, 1.0)` – isolierte Stationen spawnen öfter, dichte Cluster weniger
+
+**Zoom-Fix** (`view/GameView.java`)
+- Cursor-Anchor: Weltpunkt unter Maus bleibt beim Zoomen fixiert
+- Symmetrischer Faktor: `1.12` / `1/1.12` (war `1.1` / `0.9`, nicht symmetrisch)
+- Fallback auf `getDeltaX()` wenn `getDeltaY() == 0` (Trackpad-Kompatibilität)
+- Range 0.2–5.0 (war 0.3–3.0)
+
+**CSS-Bugfixes** (`view/game.css`)
+- `:hover:!selected` → `:hover` vor `:selected` (JavaFX kennt weder `!selected` noch `:not()`)
+- Kaskade nutzen: hover früher definiert, selected überschreibt – betrifft `.toggle-build` und `.sidebar-tab-pane .tab`
+
+**Tutorial-System** (`tutorial/TutorialStep.java`, `tutorial/TutorialManager.java`, `tutorial/TutorialOverlay.java`, `GameController`)
+- Neues Package `at.htl.afterfall.tutorial`
+- 8 Schritte: Willkommen → Strecke bauen → Route erstellen → Zug zuweisen → Neue Station → Route per Drag umleiten → Zufriedenheit-Erklärung → Los geht's
+- Aufgaben-Schritte: 500ms-Timeline prüft Completion-Predicate auf GameWorld → "✓ Erledigt!" + 900ms → auto-advance
+- Erklärungs-Schritte: nur "Weiter →" Button
+- Overlay: VBox, bottom-left, grüner Rahmen bei Erledigt; `setOnMouseClicked(Event::consume)` → kein Click-Through
+- "Überspringen" beendet Tutorial komplett, Timer wird gestoppt
+
+**Station abreißen** (`GameController`)
+- Linksklick auf Station im NONE-Modus → `handleStationDemolish()`
+- Alert.CONFIRMATION, Info über Anzahl betroffener Strecken
+- Entfernt: wartende Passagiere, Station aus allen Routen (Züge auf Index 0), verbundene Strecken + DB-Einträge, Station selbst
+- NetWorth sinkt um 8.000€ (`STATION_BUILD_COST`); kein Geld-Erstattung
+- US 2.4 damit vollständig ✅
+
+**STORIES.md aktualisiert** (`spec/stories/STORIES.md`)
+- 21/24 Stories ✅
+- Offen: US 4.2 (Umsteigen), US 6.1 (Stadtwachstum), US 7.1 Frontend, US 8.1+8.2 (neu hinzugefügt)
+- Neues Epic 8: Hauptmenü/Lobby – Spielstand laden/neu starten/löschen + Rangliste-Anzeige
+
+---
 
 #### Selektion, Route-Segment-Klick & Zug-Highlight
 
@@ -156,21 +204,18 @@
 
 ### Bekannte offene Punkte / Bugs
 
-- DELETE-Taste noch nicht implementiert (Selektion fehlt)
-- Speichern (Strg+S) persistiert noch keine Routen/Züge vollständig nach erneutem Laden
-- `PassengerSimulation.boardAndAlightPassengers()` vereinfacht – kein reales Kapazitätslimit pro Zug
-- Kein Hauptmenü / SaveGame-Ladescreen (bewusst auf später verschoben)
+- Speichern (Strg+S) persistiert Routen/Züge/Route-Stops nicht vollständig für erneutes Laden
 - ChoiceDialog für Route-Zuweisung noch System-Style (nicht custom)
+- Kein Hauptmenü/Lobby (US 8.1 – bewusst auf nächste Session verschoben)
 
 ---
 
 ### Nächste Schritte (Priorität)
 
-1. **Stadtwachstum** – neue Stationen spawnen automatisch über Zeit (Epic 6)
-2. **Speichern/Laden** – Routen, Züge, Route-Stops vollständig persistieren
-3. **Ranking-Client** – `RankingClient` (java.net.http.HttpClient), `RankingView` (Epic 7)
-4. **Tutorial-Dialog** beim ersten Start (Epic 1)
-5. **DELETE-Taste** – Station/Strecke selektieren und löschen
+1. **Lobby/Hauptmenü (US 8.1+8.2)** – `lobby.fxml` + `LobbyController`, Spielstand laden/neu/löschen, Rangliste-Platz
+2. **Rangliste Frontend (US 7.1)** – in Lobby eingebaut, `HttpClient` → Backend
+3. **Stadtwachstum (US 6.1)** – Stationen spawnen automatisch über Zeit
+4. **Umsteigen (US 4.2)** – linienübergreifende Wegfindung in PathFinder
 
 ---
 
