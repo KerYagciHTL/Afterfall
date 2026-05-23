@@ -158,8 +158,15 @@ public class GameView extends Canvas {
         });
 
         setOnScroll(e -> {
-            double factor = e.getDeltaY() > 0 ? 1.1 : 0.9;
-            zoom = Math.max(0.3, Math.min(3.0, zoom * factor));
+            double delta = e.getDeltaY() != 0 ? e.getDeltaY() : -e.getDeltaX();
+            if (delta == 0) return;
+            double factor  = delta > 0 ? 1.12 : (1.0 / 1.12);
+            double oldZoom = zoom;
+            zoom = Math.max(0.2, Math.min(5.0, zoom * factor));
+            // Zoom auf Mauszeiger anchern: Weltpunkt unter Cursor bleibt fixiert
+            double cx = getWidth() / 2.0, cy = getHeight() / 2.0;
+            camX += (e.getX() - cx) * (1.0 / zoom - 1.0 / oldZoom);
+            camY += (e.getY() - cy) * (1.0 / zoom - 1.0 / oldZoom);
             render();
         });
     }
