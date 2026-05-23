@@ -196,14 +196,15 @@
     -fx-background-color: transparent;
 }
 .list-cell:selected {
-    -fx-background-color: #1e2140;
-    -fx-background-radius: 8;
+    -fx-background-color: #2d3158;
+    -fx-background-radius: 6;
 }
 .list-cell:focused {
     -fx-background-color: transparent;
 }
 .list-cell:focused:selected {
-    -fx-background-color: #1e2140;
+    -fx-background-color: #2d3158;
+    -fx-background-radius: 6;
 }
 
 /* ── Slider ──────────────────────────────────────────── */
