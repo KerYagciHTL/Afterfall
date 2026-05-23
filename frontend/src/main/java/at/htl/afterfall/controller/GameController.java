@@ -68,8 +68,9 @@ public class GameController {
     private TutorialOverlay tutorialOverlay;
     private Timeline        tutorialTimer;
 
-    private static final double TRACK_BUILD_COST = 2_000;
+    private static final double TRACK_BUILD_COST    = 2_000;
     private static final double TRACK_NET_WORTH_GAIN = 1_600;
+    private static final double STATION_BUILD_COST   = 8_000;
 
     private final SaveGameDao saveGameDao = new SaveGameDao();
     private final StationDao stationDao = new StationDao();
@@ -290,6 +291,58 @@ public class GameController {
                     world.getEconomy().addNetWorth(-TRACK_BUILD_COST);
                     if (world.getCurrentSave() != null) trackDao.delete(track.getId());
                     showToast("Strecke abgerissen.", false);
+                    gameView.render();
+                });
+    }
+
+    private void handleStationDemolish(Station station) {
+        // Verbundene Strecken zählen für Info-Text
+        long trackCount = world.getTracks().stream()
+                .filter(t -> t.getFrom() == station || t.getTo() == station).count();
+        String extra = trackCount > 0
+                ? "\n" + trackCount + " verbundene Strecke(n) werden ebenfalls entfernt." : "";
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Station abreißen");
+        confirm.setHeaderText("Station \"" + station.getName() + "\" abreißen?");
+        confirm.setContentText(
+                "Kein Geld wird erstattet.\n" +
+                "Unternehmenswert sinkt um " + formatCurrency(STATION_BUILD_COST) + "." + extra
+        );
+        confirm.showAndWait()
+                .filter(r -> r == ButtonType.OK)
+                .ifPresent(r -> {
+                    // Wartende Passagiere entfernen
+                    world.getPassengers().removeAll(station.getWaitingPassengers());
+                    station.getWaitingPassengers().clear();
+
+                    // Station aus allen Routen entfernen, Züge resetten
+                    for (Route route : world.getRoutes()) {
+                        if (route.getStops().remove(station)) {
+                            for (Train t : route.getTrains()) {
+                                t.setCurrentStopIndex(0);
+                                t.setPosition(0.0);
+                                t.setForward(true);
+                            }
+                        }
+                    }
+
+                    // Verbundene Strecken entfernen
+                    List<Track> toRemove = world.getTracks().stream()
+                            .filter(t -> t.getFrom() == station || t.getTo() == station)
+                            .toList();
+                    for (Track t : toRemove) {
+                        world.getTracks().remove(t);
+                        if (world.getCurrentSave() != null) trackDao.delete(t.getId());
+                    }
+
+                    world.getStations().remove(station);
+                    world.getEconomy().addNetWorth(-STATION_BUILD_COST);
+                    if (world.getCurrentSave() != null) stationDao.delete(station.getId());
+
+                    routeListView.refresh();
+                    trainListView.refresh();
+                    showToast("Station abgerissen.", false);
                     gameView.render();
                 });
     }
@@ -614,7 +667,10 @@ public class GameController {
             case BUILD_STATION -> placeStation(wx, wy);
             case BUILD_TRACK -> selectStationForTrack(wx, wy);
             case BUILD_ROUTE -> addStationToRoute(wx, wy);
-            case NONE -> { /* Track-Interaktion via Callbacks */ }
+            case NONE -> {
+                Station clicked = gameView.findStationAt(wx, wy);
+                if (clicked != null) handleStationDemolish(clicked);
+            }
         }
     }
 
