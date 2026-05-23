@@ -2,7 +2,6 @@ package at.htl.afterfall.simulation;
 
 import at.htl.afterfall.model.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PassengerSimulation {
     private static final double BASE_SPAWN_INTERVAL = 0.667;
@@ -53,8 +52,32 @@ public class PassengerSimulation {
         }
         if (reachable.isEmpty()) return;
 
-        Collections.shuffle(reachable, rng);
-        Station dest = reachable.get(0);
+        // Einzugsgebiet: isolierte Stationen spawnen öfter als dicht gepackte
+        double avgDist = 0;
+        List<Station> allStations = world.getStations();
+        for (Station s : allStations) {
+            if (s == origin) continue;
+            avgDist += Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
+        }
+        if (allStations.size() > 1) avgDist /= (allStations.size() - 1);
+        double spawnChance = Math.min(avgDist / 250.0, 1.0);
+        if (rng.nextDouble() > spawnChance) return;
+
+        // Ziele weiter entfernt → höheres Gewicht (Nachbarstationen kaum Fahrgäste)
+        double[] weights = new double[reachable.size()];
+        double totalWeight = 0;
+        for (int i = 0; i < reachable.size(); i++) {
+            Station s = reachable.get(i);
+            double dist = Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
+            weights[i] = Math.max(dist, 1.0);
+            totalWeight += weights[i];
+        }
+        double pick = rng.nextDouble() * totalWeight;
+        Station dest = reachable.get(reachable.size() - 1);
+        for (int i = 0; i < reachable.size(); i++) {
+            pick -= weights[i];
+            if (pick <= 0) { dest = reachable.get(i); break; }
+        }
 
         List<Station> path = pathFinder.findPath(origin, dest);
         if (path.isEmpty()) return;

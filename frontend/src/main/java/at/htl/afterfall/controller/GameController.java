@@ -219,6 +219,7 @@ public class GameController {
                         case DELETE -> deleteSelected();
                         case S      -> { if (e.isControlDown()) saveGame(); else activateBuildStation(); }
                         case T      -> activateBuildTrack();
+                        case R      -> onNewRoute();
                     }
                 });
             }
@@ -285,40 +286,41 @@ public class GameController {
             });
     }
 
-    private void handleRouteSegmentRedirect(Route route, Station movable, Station fixed, Station newStation) {
+    private void handleRouteSegmentRedirect(Route route, Station stopA, Station stopB,
+                                            int insertAfterIndex, Station newStation) {
         if (buildMode != BuildMode.NONE) return;
 
         List<Station> stops = route.getStops();
 
         // Ziel bereits in Route → abbrechen
-        if (stops.contains(newStation) && newStation != movable) {
+        if (stops.contains(newStation)) {
             showToast("Diese Station ist bereits Teil der Route.", true);
             return;
         }
 
-        // Prüfen ob Strecke zwischen fixed und newStation existiert
-        boolean hasTrack = false;
-        for (Track t : world.getTracks()) {
-            if ((t.getFrom() == fixed && t.getTo() == newStation) ||
-                (t.getFrom() == newStation && t.getTo() == fixed)) {
-                hasTrack = true;
-                break;
-            }
-        }
-
-        if (!hasTrack) {
+        // Strecken bauen falls nötig: stopA↔new UND stopB↔new
+        boolean builtAny = false;
+        if (!hasTrackBetween(stopA, newStation)) {
             if (world.getEconomy().getBalance() < 0) {
                 showToast("Im Minus kann keine neue Strecke gebaut werden.", true);
                 return;
             }
-            buildTrackSilent(fixed, newStation);
+            buildTrackSilent(stopA, newStation);
+            builtAny = true;
+        }
+        if (!hasTrackBetween(stopB, newStation)) {
+            if (world.getEconomy().getBalance() < 0) {
+                showToast("Im Minus kann keine neue Strecke gebaut werden.", true);
+                return;
+            }
+            buildTrackSilent(stopB, newStation);
+            builtAny = true;
         }
 
-        // Route-Stop ersetzen
-        int idx = stops.indexOf(movable);
-        if (idx >= 0) stops.set(idx, newStation);
+        // Station zwischen stopA und stopB einfügen (beide bleiben erhalten)
+        stops.add(insertAfterIndex + 1, newStation);
 
-        // Züge auf dieser Route zurücksetzen (Stop-Index könnte ungültig sein)
+        // Züge zurücksetzen
         for (Train t : route.getTrains()) {
             t.setCurrentStopIndex(0);
             t.setPosition(0.0);
@@ -327,7 +329,15 @@ public class GameController {
 
         routeListView.refresh();
         gameView.render();
-        showToast("Route umgeleitet" + (hasTrack ? "." : " – neue Strecke gebaut."), false);
+        showToast("Station eingefügt" + (builtAny ? " – neue Strecken gebaut." : "."), false);
+    }
+
+    private boolean hasTrackBetween(Station a, Station b) {
+        for (Track t : world.getTracks()) {
+            if ((t.getFrom() == a && t.getTo() == b) ||
+                (t.getFrom() == b && t.getTo() == a)) return true;
+        }
+        return false;
     }
 
     /** Baut eine Strecke ohne Gleichgewichtsprüfung (intern für Route-Redirect). */

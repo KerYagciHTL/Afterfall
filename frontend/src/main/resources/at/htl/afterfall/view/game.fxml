@@ -98,7 +98,7 @@
                     <Separator/>
                     <Label text="Rechtsklick + Drag  →  Kamera bewegen" styleClass="section-hint"/>
                     <Label text="Scroll  →  Zoom  •  SPACE  →  Pause" styleClass="section-hint"/>
-                    <Label text="S  →  Station  •  T  →  Strecke  •  ESC  →  Abbrechen" styleClass="section-hint"/>
+                    <Label text="S  →  Station  •  T  →  Strecke  •  R  →  Route  •  ESC  →  Abbrechen" styleClass="section-hint"/>
                     <Label text="Strg+S  →  Speichern" styleClass="section-hint"/>
                 </VBox>
             </Tab>

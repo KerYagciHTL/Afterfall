@@ -33,7 +33,8 @@ public class GameView extends Canvas {
 
     @FunctionalInterface
     public interface RouteSegmentRedirectCallback {
-        void call(Route route, Station movableStop, Station fixedStop, Station newStation);
+        /** newStation wird zwischen stopA und stopB eingefügt (insertAfterIndex = stopA-Index). */
+        void call(Route route, Station stopA, Station stopB, int insertAfterIndex, Station newStation);
     }
 
     @FunctionalInterface
@@ -64,6 +65,7 @@ public class GameView extends Canvas {
     private boolean             dragDetected            = false;
     private double              pressSX, pressSY;
     private double              dragWX, dragWY;
+    private Station             dragOtherStation        = null; // zweiter Endpunkt des Segments
     private Station             snapTarget              = null;
     private boolean             lastClickConsumed       = false;
 
@@ -98,6 +100,7 @@ public class GameView extends Canvas {
                     double  db = Math.hypot(sB.getX()-wx, sB.getY()-wy);
                     movableIsFirst   = da < db;
                     dragFixedStation = movableIsFirst ? sB : sA;
+                    dragOtherStation = movableIsFirst ? sA : sB;
                 }
             }
         });
@@ -130,10 +133,11 @@ public class GameView extends Canvas {
                     Station nearest = movableIsFirst ? sA : sB;
                     Station other   = movableIsFirst ? sB : sA;
 
-                    if (dragDetected && snapTarget != null && dragFixedStation != null) {
+                    if (dragDetected && snapTarget != null) {
                         lastClickConsumed = true;
                         if (routeSegmentRedirectCb != null)
-                            routeSegmentRedirectCb.call(pressedSegment.route, nearest, dragFixedStation, snapTarget);
+                            routeSegmentRedirectCb.call(
+                                pressedSegment.route, sA, sB, pressedSegment.stopIndexA, snapTarget);
                     } else if (!dragDetected) {
                         lastClickConsumed = true;
                         if (routeSegmentClickCb != null)
@@ -147,6 +151,7 @@ public class GameView extends Canvas {
                 pressedTrack     = null;
                 dragDetected     = false;
                 dragFixedStation = null;
+                dragOtherStation = null;
                 snapTarget       = null;
                 render();
             }
@@ -277,7 +282,10 @@ public class GameView extends Canvas {
         gc.setStroke(Color.color(1, 1, 1, 0.65));
         gc.setLineWidth(5.0 / zoom);
         gc.setLineDashes(10.0 / zoom, 6.0 / zoom);
-        gc.strokeLine(dragFixedStation.getX(), dragFixedStation.getY(), ex, ey);
+        if (dragFixedStation != null)
+            gc.strokeLine(dragFixedStation.getX(), dragFixedStation.getY(), ex, ey);
+        if (dragOtherStation != null)
+            gc.strokeLine(dragOtherStation.getX(), dragOtherStation.getY(), ex, ey);
         gc.setLineDashes(null);
         gc.restore();
 
