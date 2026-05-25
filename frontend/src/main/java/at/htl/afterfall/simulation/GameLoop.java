@@ -1,8 +1,10 @@
 package at.htl.afterfall.simulation;
 
 import at.htl.afterfall.model.GameWorld;
+import at.htl.afterfall.model.Station;
 import at.htl.afterfall.view.GameView;
 import javafx.animation.AnimationTimer;
+import java.util.function.Consumer;
 
 public class GameLoop extends AnimationTimer {
     private static final double MAX_DELTA     = 0.1;  // cap: max 100ms pro Frame
@@ -16,6 +18,7 @@ public class GameLoop extends AnimationTimer {
     private final PassengerSimulation passengerSim;
     private final EconomyEngine       economyEngine;
     private final SatisfactionEngine  satisfactionEngine;
+    private final CityGrowthEngine    cityGrowthEngine;
 
     public GameLoop(GameWorld world, GameView gameView) {
         this.world              = world;
@@ -23,6 +26,11 @@ public class GameLoop extends AnimationTimer {
         this.passengerSim       = new PassengerSimulation(world);
         this.economyEngine      = new EconomyEngine(world);
         this.satisfactionEngine = new SatisfactionEngine(world);
+        this.cityGrowthEngine   = new CityGrowthEngine(world);
+    }
+
+    public void setOnNewStation(Consumer<Station> cb) {
+        cityGrowthEngine.setOnNewStation(cb);
     }
 
     @Override
@@ -39,6 +47,7 @@ public class GameLoop extends AnimationTimer {
         passengerSim.tick(delta);
         economyEngine.tick(delta);
         satisfactionEngine.tick(delta);
+        cityGrowthEngine.tick(delta);
 
         // EMA für €/s (exponential moving average, 2s-Konstante)
         double netChange    = world.getEconomy().getBalance() - balanceBefore;
