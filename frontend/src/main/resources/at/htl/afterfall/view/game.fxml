@@ -27,8 +27,7 @@
             <VBox styleClass="stat-chip" spacing="2">
                 <HBox alignment="CENTER_LEFT" spacing="8">
                     <Label text="😊" style="-fx-font-size: 15;"/>
-                    <Label fx:id="satisfactionLabel" styleClass="stat-value"
-                           style="-fx-text-fill: #69f0ae;"/>
+                    <Label fx:id="satisfactionLabel" styleClass="stat-value"/>
                 </HBox>
                 <Label text="Zufriedenheit" styleClass="stat-label"/>
             </VBox>

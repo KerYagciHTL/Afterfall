@@ -205,7 +205,16 @@ public class GameController {
         });
 
         gameLoop = new GameLoop(world, gameView);
+        gameLoop.setOnNewStation(s ->
+            showToast("Neuer Stadtteil: " + s.getName() + " fordert Anbindung!", true)
+        );
         gameLoop.start();
+
+        // Initial satisfaction color
+        updateSatisfactionColor(world.getSatisfaction().getValue());
+        world.getSatisfaction().valueProperty().addListener((obs, o, n) ->
+            updateSatisfactionColor(n.doubleValue())
+        );
     }
 
     // ─── Toast-System ────────────────────────────────────────────────────────
@@ -332,6 +341,13 @@ public class GameController {
             canvasContainer.getChildren().remove(trainShopOverlay);
             trainShopOverlay = null;
         }
+    }
+
+    // ─── Satisfaction Color ───────────────────────────────────────────────────
+
+    private void updateSatisfactionColor(double v) {
+        String color = v >= 70 ? "#69f0ae" : v >= 40 ? "#ffd54f" : "#ff5252";
+        satisfactionLabel.setStyle("-fx-text-fill: " + color + ";");
     }
 
     // ─── €/s Label Update ─────────────────────────────────────────────────────
