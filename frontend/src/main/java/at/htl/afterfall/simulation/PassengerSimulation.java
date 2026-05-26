@@ -4,7 +4,7 @@ import at.htl.afterfall.model.*;
 import java.util.*;
 
 public class PassengerSimulation {
-    private static final double BASE_SPAWN_INTERVAL = 5.0;
+    private static final double BASE_SPAWN_INTERVAL = 2.0;
 
     private final GameWorld  world;
     private final PathFinder pathFinder;
