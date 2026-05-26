@@ -32,7 +32,6 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 *Das Verhalten der Fahrgäste.*
 
 * ✅ **US 4.1 - Passagier-Generierung:** Als Spieler möchte ich, dass die Stadt kontinuierlich Passagiere mit einem spezifischen Zielort generiert, die zu den Stationen laufen.
-* **US 4.2 - Intelligente Wegfindung:** Als Spieler möchte ich, dass Passagiere automatisch den kürzesten Weg zu ihrem Ziel finden und dabei selbstständig zwischen verschiedenen Linien umsteigen. *(Wegfindung auf einer Route ✅ – linienübergreifendes Umsteigen ❌)*
 * ✅ **US 4.3 - Darstellung an Stationen:** Als Spieler möchte ich an den Stationen sehen können, wie viele Passagiere dort warten, sortiert nach ihren Zielorten, um Engpässe zu erkennen.
 * ✅ **US 4.4 - Boarding (Kapazitätslimit):** Als Spieler möchte ich, dass wartende Passagiere in eintreffende Züge einsteigen, bis die maximale Kapazität des jeweiligen Zugtyps erreicht ist. Die Stationen bieten unbegrenzt Platz für wartende Passagiere und unbegrenzt viele Gleise für Züge, aber volle Züge müssen die restlichen Passagiere am Bahnsteig zurücklassen.
 
@@ -46,7 +45,7 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 ## Epic 6: Stadtwachstum & Zufriedenheit
 *Die dynamische Entwicklung der Stadt und die Bewertung des Spielers.*
 
-* **US 6.1 - Dynamisches Stadtwachstum:** Als Spieler möchte ich, dass im Laufe der Zeit die Stadtbevölkerung wächst und neue Orte auf der Karte entstehen, die eine Anbindung fordern. *(❌ – Stationen werden nur manuell gebaut)*
+* ✅ **US 6.1 - Dynamisches Stadtwachstum:** Als Spieler möchte ich, dass im Laufe der Zeit die Stadtbevölkerung wächst und neue Orte auf der Karte entstehen, die eine Anbindung fordern. *(`CityGrowthEngine` aktiv: spawnt nach 60s die erste Station, danach alle 50–120s; Toast-Benachrichtigung; `setDemandingConnection(true)` für Zufriedenheits-Einfluss)*
 * ✅ **US 6.2 - Zufriedenheits-Berechnung:** Als Spieler möchte ich eine globale Prozentanzeige für die "Zufriedenheit der Stadt" sehen, die meine Leistung widerspiegelt.
 * ✅ **US 6.3 - Auswirkungen auf Zufriedenheit:** Als Spieler möchte ich, dass sich hohe Wartezeiten, zu hohe Ticketpreise, überfüllte Züge und nicht-angebundene neue Orte negativ auf die Zufriedenheit auswirken.
 * ✅ **US 6.4 - Nachfrage-Steuerung:** Als Spieler möchte ich, dass die aktuelle Zufriedenheit und der Ticketpreis direkten Einfluss auf die Generierungsrate neuer Passagiere haben (hohe Zufriedenheit/niedriger Preis = mehr Passagiere).
@@ -61,20 +60,10 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 ## Epic 8: Hauptmenü & Spielstand-Verwaltung
 *Der Einstiegspunkt ins Spiel – Spielstand laden, neu starten, Rangliste einsehen.*
 
-* **US 8.1 - Hauptmenü (Lobby):** Als Spieler möchte ich beim Start der Anwendung eine Lobby-Ansicht sehen, von der aus ich alle weiteren Aktionen (Laden, Neu starten, Rangliste) starten kann, damit das Spiel einen klaren Einstiegspunkt hat.
+* ✅ **US 8.1 - Hauptmenü (Lobby):** Als Spieler möchte ich beim Start der Anwendung eine Lobby-Ansicht sehen, von der aus ich alle weiteren Aktionen (Laden, Neu starten, Rangliste) starten kann, damit das Spiel einen klaren Einstiegspunkt hat.
 
-  **Was zu implementieren ist:**
-  - Neue FXML-Ansicht `lobby.fxml` mit passendem `LobbyController` im bestehenden Design (dunkles Theme, identische Schriften/Farben wie `game.fxml`)
-  - `MainApp` startet bei Launch direkt die Lobby statt des Spiels
-  - Lobby zeigt drei Bereiche:
-    1. **Gespeicherte Spielstände** – Liste aller vorhandenen Saves aus der DB (Name + letztes Speicherdatum), auswählbar per Klick → lädt den Spielstand und wechselt zur Spielansicht
-    2. **Neues Spiel** – Button startet frisches Spiel mit Tutorial (leere Welt, 2 Startstationen)
-    3. **Rangliste** – Bereich für US 7.1, zeigt globale Net-Worth-Bestenliste (Backend bereits vorhanden)
-  - Spielstand laden: `LobbyController` befüllt `GameWorld` über bestehende DAOs (`StationDao`, `TrackDao`, `RouteDao`, `TrainDao`, `EconomyDao`) bevor zur Spielansicht gewechselt wird
-  - Übergang Lobby → Spiel via `FXMLLoader` / `Stage.setScene()`; Rückweg (Spiel → Lobby) über einen "Hauptmenü"-Button in der Toolbar
+  *(Lobby via `MainController` + `main.fxml` implementiert: Spielstand-Liste ✅, Neues Spiel ✅, Laden ✅, Zurück zum Menü-Button im Spiel ✅ – Ranglisten-Bereich in der Lobby ❌ noch offen)*
 
-* **US 8.2 - Spielstand löschen:** Als Spieler möchte ich in der Lobby einen gespeicherten Spielstand löschen können, damit die Liste übersichtlich bleibt.
+* ✅ **US 8.2 - Spielstand löschen:** Als Spieler möchte ich in der Lobby einen gespeicherten Spielstand löschen können, damit die Liste übersichtlich bleibt.
 
-  **Was zu implementieren ist:**
-  - Löschen-Button neben jedem Eintrag in der Spielstand-Liste (mit Bestätigungsdialog)
-  - Entfernt den Eintrag aus der DB über `SaveGameDao.delete()`
+  *(`MainController.onDelete()` mit Bestätigungsdialog + `SaveGameDao.delete()` implementiert ✅)*

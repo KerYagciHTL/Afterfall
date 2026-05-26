@@ -1004,25 +1004,6 @@ public class GameController {
         world.getTrains().addAll(trains);
         for (Train t : trains) {
             if (t.getRoute() != null) t.getRoute().getTrains().add(t);
-    private void saveGame() {
-        if (world.getCurrentSave() == null) {
-            String name = askInput("Spielstand speichern", "Name:", "Mein Spielstand");
-            if (name == null || name.isBlank()) return;
-            int id = saveGameDao.insert(name);
-            SaveGame sg = new SaveGame(id, name, LocalDateTime.now(), LocalDateTime.now());
-            world.setCurrentSave(sg);
-            for (Station s : world.getStations()) {
-                int dbId = stationDao.insert(id, s);
-                s.setId(dbId);
-            }
-            for (Track t : world.getTracks()) {
-                int dbId = trackDao.insert(id, t);
-                t.setId(dbId);
-            }
-            for (Route r : world.getRoutes()) routeDao.insert(id, r);
-            for (Train t : world.getTrains()) trainDao.insert(id, t);
-        } else {
-            saveGameDao.updateLastSaved(world.getCurrentSave().getId());
         }
 
         economyDao.load(id, world.getEconomy(), world.getSatisfaction());
@@ -1054,7 +1035,7 @@ public class GameController {
         for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
         for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
         for (Route r   : world.getRoutes())   routeDao.insert(id, r);
-        for (Train t   : world.getTrains())   trainDao.insert(id, t);
+        for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
 
         economyDao.save(id, world.getEconomy(), world.getSatisfaction());
         saveGameDao.updateLastSaved(id);
