@@ -56,3 +56,15 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 *Der kompetitive Langzeit-Faktor.*
 
 * **US 7.1 - Ranglisten-Integration:** Als Spieler möchte ich meinen Unternehmenswert (Net Worth) in einer globalen oder Freundes-Rangliste vergleichen können, um motiviert zu bleiben, mein Netz immer weiter zu optimieren.
+
+
+
+## Epic 8: Spielstand-Verwaltung
+*Persistenz und Verwaltung von Spielfortschritten.*
+
+* **US 8.1 - Spielstand erstellen:** Als Spieler möchte ich beim Start eines neuen Spiels einen Namen für meinen Spielstand vergeben können, damit ich ihn später eindeutig wiederfinde.
+* **US 8.2 - Spielstand speichern:** Als Spieler möchte ich den aktuellen Spielzustand (Stationen, Linien, Züge, Kontostand, Spielzeit) jederzeit manuell speichern können, damit kein Fortschritt verloren geht.
+* **US 8.3 - Spielstand laden:** Als Spieler möchte ich beim Start der Anwendung eine Liste meiner gespeicherten Spielstände sehen und einen davon auswählen und laden können, um eine frühere Partie fortzusetzen.
+* **US 8.4 - Mehrere Spielstände:** Als Spieler möchte ich mehrere unabhängige Spielstände gleichzeitig verwalten können, damit ich verschiedene Strategien parallel ausprobieren kann.
+* **US 8.5 - Spielstand löschen:** Als Spieler möchte ich einen bestehenden Spielstand dauerhaft löschen können, um Platz für neue Partien zu schaffen und die Übersicht zu behalten.
+
