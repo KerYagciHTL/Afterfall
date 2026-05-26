@@ -1,0 +1,14 @@
+services:
+  ranking-backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - RANKING_TOKEN=${RANKING_TOKEN}
+      - DB_PATH=/data/ranking.db
+    volumes:
+      - ranking-data:/data
+    restart: unless-stopped
+
+volumes:
+  ranking-data:

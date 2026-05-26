@@ -4,22 +4,18 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 
 public class Economy {
-    private final DoubleProperty balance            = new SimpleDoubleProperty(10_000);
-    private final DoubleProperty netWorth           = new SimpleDoubleProperty(10_000);
-    private final DoubleProperty ticketPricePerStop = new SimpleDoubleProperty(1.5);
-    private final DoubleProperty incomeRate         = new SimpleDoubleProperty(0.0);
+    private final DoubleProperty balance    = new SimpleDoubleProperty(10_000);
+    private final DoubleProperty netWorth   = new SimpleDoubleProperty(10_000);
+    private final DoubleProperty incomeRate = new SimpleDoubleProperty(0.0);
 
-    public DoubleProperty balanceProperty()            { return balance; }
-    public DoubleProperty netWorthProperty()           { return netWorth; }
-    public DoubleProperty ticketPricePerStopProperty() { return ticketPricePerStop; }
+    public DoubleProperty balanceProperty()  { return balance; }
+    public DoubleProperty netWorthProperty() { return netWorth; }
 
-    public double getBalance()            { return balance.get(); }
-    public double getNetWorth()           { return netWorth.get(); }
-    public double getTicketPricePerStop() { return ticketPricePerStop.get(); }
+    public double getBalance()  { return balance.get(); }
+    public double getNetWorth() { return netWorth.get(); }
 
-    public void setBalance(double v)            { balance.set(v); }
-    public void setNetWorth(double v)           { netWorth.set(v); }
-    public void setTicketPricePerStop(double v) { ticketPricePerStop.set(v); }
+    public void setBalance(double v)  { balance.set(v); }
+    public void setNetWorth(double v) { netWorth.set(v); }
 
     public DoubleProperty incomeRateProperty()    { return incomeRate; }
     public double         getIncomeRate()         { return incomeRate.get(); }

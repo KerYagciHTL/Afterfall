@@ -4,7 +4,8 @@ import at.htl.afterfall.model.*;
 import java.util.*;
 
 public class PassengerSimulation {
-    private static final double BASE_SPAWN_INTERVAL = 2.0;
+    private static final double BASE_SPAWN_INTERVAL = 0.667;
+    private static final double FARE_PER_PX         = 0.15;
 
     private final GameWorld  world;
     private final PathFinder pathFinder;
@@ -28,23 +29,61 @@ public class PassengerSimulation {
 
     private double spawnInterval() {
         double sat      = world.getSatisfaction().getValue() / 100.0;
-        double price    = world.getEconomy().getTicketPricePerStop();
-        double modifier = Math.max(0.5, 1.5 + sat * 0.5 - Math.max(0, (price - 1.5) / 1.5));
+        double modifier = Math.max(0.5, 1.0 + sat);
         return BASE_SPAWN_INTERVAL / modifier;
     }
 
     private void spawnPassenger() {
         List<Station> stations = world.getStations();
         if (stations.size() < 2) return;
-        Station origin = stations.get(rng.nextInt(stations.size()));
-        Station dest;
-        do { dest = stations.get(rng.nextInt(stations.size())); } while (dest == origin);
+        for (Station origin : stations) {
+            spawnFrom(origin, stations);
+        }
+    }
+
+    private void spawnFrom(Station origin, List<Station> allStations) {
+        // Nur Ziele auf derselben Route → kein Umstieg nötig, kein falscher Zug
+        List<Station> reachable = new ArrayList<>();
+        for (Route r : world.getRoutes()) {
+            if (!r.isActive() || !r.getStops().contains(origin)) continue;
+            for (Station s : r.getStops()) {
+                if (s != origin && !reachable.contains(s)) reachable.add(s);
+            }
+        }
+        if (reachable.isEmpty()) return;
+
+        // Einzugsgebiet: isolierte Stationen spawnen öfter als dicht gepackte
+        double avgDist = 0;
+        for (Station s : allStations) {
+            if (s == origin) continue;
+            avgDist += Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
+        }
+        if (allStations.size() > 1) avgDist /= (allStations.size() - 1);
+        double spawnChance = Math.min(avgDist / 250.0, 1.0);
+        if (rng.nextDouble() > spawnChance) return;
+
+        // Ziele weiter entfernt → höheres Gewicht (Nachbarstationen kaum Fahrgäste)
+        double[] weights = new double[reachable.size()];
+        double totalWeight = 0;
+        for (int i = 0; i < reachable.size(); i++) {
+            Station s = reachable.get(i);
+            double dist = Math.hypot(s.getX() - origin.getX(), s.getY() - origin.getY());
+            weights[i] = Math.max(dist, 1.0);
+            totalWeight += weights[i];
+        }
+        double pick = rng.nextDouble() * totalWeight;
+        Station dest = reachable.get(reachable.size() - 1);
+        for (int i = 0; i < reachable.size(); i++) {
+            pick -= weights[i];
+            if (pick <= 0) { dest = reachable.get(i); break; }
+        }
 
         List<Station> path = pathFinder.findPath(origin, dest);
         if (path.isEmpty()) return;
 
         Passenger p = new Passenger(nextId++, origin, dest);
         p.setPath(path);
+        p.setFare(calcFare(path));
         origin.getWaitingPassengers().add(p);
         world.getPassengers().add(p);
     }
@@ -87,23 +126,40 @@ public class PassengerSimulation {
     }
 
     private void boardAndAlightPassengers(Train train, Station station) {
-        // alight passengers whose next path stop matches this station
+        // Aussteigen: alle Onboard-Passagiere mit Ziel = diese Station
+        List<Passenger> alighting = new ArrayList<>();
+        for (Passenger p : train.getOnboardPassengers()) {
+            if (p.getDestination() == station) alighting.add(p);
+        }
+        for (Passenger p : alighting) {
+            train.getOnboardPassengers().remove(p);
+            world.getPassengers().remove(p);
+            world.getEconomy().addBalance(p.getFare());
+            world.getEconomy().addNetWorth(p.getFare());
+        }
+
+        // Einsteigen: nur wenn dieser Zug die Zielstation tatsächlich bedient
+        int available = train.getType().capacity - train.getOnboardCount();
         List<Passenger> waiting = new ArrayList<>(station.getWaitingPassengers());
-        int capacity = train.getType().capacity;
-        int boarded  = 0;
         for (Passenger p : waiting) {
-            if (boarded >= capacity) break;
+            if (available <= 0) break;
+            if (!train.getRoute().getStops().contains(p.getDestination())) continue;
             List<Station> path = p.getPath();
-            int stationIdx = path.indexOf(station);
-            if (stationIdx >= 0 && stationIdx < path.size() - 1) {
+            int idx = path.indexOf(station);
+            if (idx >= 0 && idx < path.size() - 1) {
                 station.getWaitingPassengers().remove(p);
-                world.getPassengers().remove(p);
-                boarded++;
-                // simplified: deliver immediately, earn revenue
-                int stops = path.size() - 1;
-                world.getEconomy().addBalance(world.getEconomy().getTicketPricePerStop() * stops);
-                world.getEconomy().addNetWorth(world.getEconomy().getTicketPricePerStop() * stops);
+                train.getOnboardPassengers().add(p);
+                available--;
             }
         }
+    }
+
+    private double calcFare(List<Station> path) {
+        double dist = 0;
+        for (int i = 0; i < path.size() - 1; i++) {
+            Station a = path.get(i), b = path.get(i + 1);
+            dist += Math.hypot(b.getX() - a.getX(), b.getY() - a.getY());
+        }
+        return Math.max(10.0, dist * FARE_PER_PX);
     }
 }

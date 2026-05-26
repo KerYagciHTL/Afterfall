@@ -3,9 +3,8 @@ package at.htl.afterfall.simulation;
 import at.htl.afterfall.model.*;
 
 public class SatisfactionEngine {
-    private static final double MAX_WAIT  = 120_000.0;
-    private static final double FAIR_PRICE = 1.5;
-    private static final double INTERVAL  = 0.5;   // compute 2× / sec statt 60×
+    private static final double MAX_WAIT = 45_000.0; // 45s bis max Wartestrafe
+    private static final double INTERVAL = 0.5;
 
     private final GameWorld world;
     private double timer = 0;
@@ -21,12 +20,11 @@ public class SatisfactionEngine {
         timer = 0;
 
         Satisfaction sat = world.getSatisfaction();
-        Economy      eco = world.getEconomy();
 
         // Connectivity: clear demandingConnection flag as soon as a station is served
-        int total     = world.getStations().size();
         int connected = 0;
         int demandingUnmet = 0;
+        int total = world.getStations().size(), connected = 0;
         for (Station s : world.getStations()) {
             boolean conn = isConnected(s);
             if (conn) {
@@ -36,15 +34,19 @@ public class SatisfactionEngine {
                 demandingUnmet++;
             }
         }
+        double connFactor = total > 0 ? (double) connected / total : 0;
 
         // Average passenger wait time
         double avgWait = 0;
+        int totalWaiting = 0;
         var passengers = world.getPassengers();
         if (!passengers.isEmpty()) {
             long sum = 0;
             for (Passenger p : passengers) sum += p.getWaitTimeMs();
             avgWait = (double) sum / passengers.size();
+            totalWaiting = passengers.size();
         }
+        double waitFactor = Math.min(avgWait / MAX_WAIT, 1.0);
 
         // Crowding: active routes with no trains OR where waiting load exceeds total capacity
         int activeRoutes = 0;
@@ -58,7 +60,18 @@ public class SatisfactionEngine {
             int waiting = 0;
             for (Station s : r.getStops()) waiting += s.getWaitingPassengers().size();
             if (waiting > cap) crowded++;
+        int totalOnboard = 0;
+        for (Train t : world.getTrains()) totalOnboard += t.getOnboardCount();
+        // Hoher Wert = Züge sind voll im Einsatz; 0 = niemand wird befördert
+        double deliveryBonus = (totalOnboard + totalWaiting) > 0
+                               ? (double) totalOnboard / (totalOnboard + totalWaiting)
+                               : 0;
+
+        int totalRoutes = world.getRoutes().size(), empty = 0;
+        for (Route r : world.getRoutes()) {
+            if (r.getTrains().isEmpty() && r.getStops().size() > 1) empty++;
         }
+        double emptyFactor = totalRoutes > 0 ? (double) empty / totalRoutes : 0;
 
         double connFactor    = total > 0 ? (double) connected / total : 0;
         double waitFactor    = Math.min(avgWait / MAX_WAIT, 1.0);

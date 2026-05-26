@@ -18,4 +18,8 @@ public class Track {
     public Station getFrom()   { return from; }
     public Station getTo()     { return to; }
     public double  getLength() { return length; }
+
+    public void setFrom(Station from) { this.from = from; recalcLength(); }
+    public void setTo(Station to)     { this.to   = to;   recalcLength(); }
+    private void recalcLength()       { length = Math.hypot(to.getX()-from.getX(), to.getY()-from.getY()); }
 }

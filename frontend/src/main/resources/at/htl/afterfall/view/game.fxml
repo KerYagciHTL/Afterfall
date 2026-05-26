@@ -39,21 +39,7 @@
                     <Label fx:id="netWorthLabel" styleClass="stat-value"
                            style="-fx-text-fill: #ffd54f;"/>
                 </HBox>
-                <Label text="Nettowert" styleClass="stat-label"/>
-            </VBox>
-
-            <!-- 🎫 Ticketpreis -->
-            <VBox styleClass="stat-chip" spacing="2">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="🎫" style="-fx-font-size: 13;"/>
-                    <Slider fx:id="ticketSlider" min="0.5" max="5.0" value="1.5"
-                            prefWidth="130" showTickLabels="false" showTickMarks="true"
-                            majorTickUnit="0.5" minorTickCount="0"
-                            snapToTicks="true" blockIncrement="0.5"/>
-                    <Label fx:id="ticketPriceLabel"
-                           style="-fx-text-fill: #ffd54f; -fx-font-size: 14; -fx-font-weight: bold; -fx-min-width: 60;"/>
-                </HBox>
-                <Label text="Ticketpreis / Halt" styleClass="stat-label"/>
+                <Label text="Unternehmenswert" styleClass="stat-label"/>
             </VBox>
 
             <!-- Spacer schiebt Buttons nach rechts -->
@@ -63,6 +49,8 @@
             <Button text="☰  Menü" onAction="#onMainMenu" styleClass="btn-neutral"/>
             <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
             <Button fx:id="pauseButton" text="⏸  Pause" onAction="#onPause"
+                    styleClass="btn-neutral"/>
+            <Button fx:id="speedButton" text="▶▶  1×" onAction="#onSpeedToggle"
                     styleClass="btn-neutral"/>
             <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
             <ToggleButton fx:id="buildStationBtn" text="⊕  Station" onAction="#onBuildStation"
@@ -111,7 +99,7 @@
                     <Separator/>
                     <Label text="Rechtsklick + Drag  →  Kamera bewegen" styleClass="section-hint"/>
                     <Label text="Scroll  →  Zoom  •  SPACE  →  Pause" styleClass="section-hint"/>
-                    <Label text="S  →  Station  •  T  →  Strecke  •  ESC  →  Abbrechen" styleClass="section-hint"/>
+                    <Label text="S  →  Station  •  T  →  Strecke  •  R  →  Route  •  ESC  →  Abbrechen" styleClass="section-hint"/>
                     <Label text="Strg+S  →  Speichern" styleClass="section-hint"/>
                 </VBox>
             </Tab>
