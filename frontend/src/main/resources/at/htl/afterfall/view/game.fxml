@@ -60,6 +60,8 @@
             <Region HBox.hgrow="ALWAYS"/>
 
             <!-- Steuerungs-Buttons -->
+            <Button text="☰  Menü" onAction="#onMainMenu" styleClass="btn-neutral"/>
+            <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
             <Button fx:id="pauseButton" text="⏸  Pause" onAction="#onPause"
                     styleClass="btn-neutral"/>
             <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
