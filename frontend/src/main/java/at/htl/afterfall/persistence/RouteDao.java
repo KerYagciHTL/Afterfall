@@ -18,6 +18,7 @@ public class RouteDao {
                 while (rs.next()) {
                     Route route = new Route(rs.getInt("id"), Color.web(rs.getString("color_hex")));
                     route.setActive(rs.getInt("active") == 1);
+                    route.setCircular(rs.getInt("circular") == 1);
                     loadStops(route, stationMap);
                     list.add(route);
                 }
@@ -41,13 +42,24 @@ public class RouteDao {
         }
     }
 
+    public void deleteAllBySaveId(int saveId) {
+        try (PreparedStatement ps = DatabaseManager.getConnection()
+                .prepareStatement("DELETE FROM routes WHERE save_id = ?")) {
+            ps.setInt(1, saveId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public int insert(int saveId, Route route) {
         try (PreparedStatement ps = DatabaseManager.getConnection().prepareStatement(
-                "INSERT INTO routes (save_id, color_hex, active) VALUES (?, ?, ?)",
+                "INSERT INTO routes (save_id, color_hex, active, circular) VALUES (?, ?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, saveId);
             ps.setString(2, route.getColorHex());
             ps.setInt(3, route.isActive() ? 1 : 0);
+            ps.setInt(4, route.isCircular() ? 1 : 0);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 keys.next();
