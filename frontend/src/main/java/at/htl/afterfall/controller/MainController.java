@@ -4,23 +4,32 @@ import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.SaveGame;
 import at.htl.afterfall.persistence.DatabaseManager;
 import at.htl.afterfall.persistence.SaveGameDao;
+import at.htl.afterfall.util.RankingClient;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.CompletableFuture;
 
 public class MainController {
 
-    @FXML private ListView<SaveGame> saveListView;
-    @FXML private Button             loadBtn;
-    @FXML private Button             deleteBtn;
-    @FXML private Label              statusLabel;
+    @FXML private ListView<SaveGame>              saveListView;
+    @FXML private Button                          loadBtn;
+    @FXML private Button                          deleteBtn;
+    @FXML private Label                           statusLabel;
+    @FXML private ListView<RankingClient.RankingEntry> rankingListView;
+    @FXML private Label                           rankingStatusLabel;
 
     private final SaveGameDao saveGameDao = new SaveGameDao();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
@@ -64,6 +73,54 @@ public class MainController {
         saveListView.getSelectionModel().selectedItemProperty().addListener(
             (obs, o, n) -> saveListView.refresh()
         );
+
+        loadRanking();
+    }
+
+    private void loadRanking() {
+        rankingStatusLabel.setText("Lade Rangliste...");
+
+        rankingListView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(RankingClient.RankingEntry e, boolean empty) {
+                super.updateItem(e, empty);
+                if (empty || e == null) { setGraphic(null); setStyle(""); return; }
+
+                Label rankLbl = new Label("#" + e.rank());
+                rankLbl.setStyle("-fx-text-fill: #3d5af1; -fx-font-size: 13; -fx-font-weight: bold; -fx-min-width: 40;");
+
+                Label nameLbl = new Label(e.playerName());
+                nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
+
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                Label worthLbl = new Label(formatNetWorth(e.netWorth()));
+                worthLbl.setStyle("-fx-text-fill: #43d494; -fx-font-size: 13; -fx-font-weight: bold;");
+
+                HBox row = new HBox(10, rankLbl, nameLbl, spacer, worthLbl);
+                row.setAlignment(Pos.CENTER_LEFT);
+
+                setGraphic(row);
+                setStyle("-fx-background-color: #13141f; -fx-padding: 8 16 8 16; -fx-background-radius: 6;");
+            }
+        });
+
+        CompletableFuture.supplyAsync(RankingClient::fetchRanking)
+            .thenAcceptAsync(entries -> Platform.runLater(() -> {
+                if (entries == null) {
+                    rankingStatusLabel.setText("Rangliste nicht erreichbar.");
+                    return;
+                }
+                rankingStatusLabel.setText("");
+                rankingListView.getItems().setAll(entries);
+            }));
+    }
+
+    private static String formatNetWorth(double amount) {
+        if (amount >= 1_000_000) return String.format("%.1f Mio €", amount / 1_000_000.0);
+        if (amount >= 1_000)     return String.format("%.1fk €", amount / 1_000.0);
+        return String.format("%.0f €", amount);
     }
 
     private void refreshList() {
@@ -128,6 +185,7 @@ public class MainController {
 
             Stage stage = (Stage) saveListView.getScene().getWindow();
             stage.setScene(new Scene(loader.getRoot()));
+            stage.setMaximized(true);
         } catch (IOException e) {
             statusLabel.setText("Fehler: " + e.getMessage());
         }

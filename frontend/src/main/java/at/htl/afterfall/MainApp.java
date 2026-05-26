@@ -15,6 +15,7 @@ public class MainApp extends Application {
         Scene scene = new Scene(loader.load(), 900, 700);
         stage.setTitle("Afterfall – U-Bahn Manager");
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.show();
     }
 

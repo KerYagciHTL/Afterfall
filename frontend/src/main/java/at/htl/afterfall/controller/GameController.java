@@ -3,6 +3,7 @@ package at.htl.afterfall.controller;
 import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.*;
 import at.htl.afterfall.persistence.*;
+import at.htl.afterfall.util.RankingClient;
 import at.htl.afterfall.simulation.GameLoop;
 import at.htl.afterfall.tutorial.TutorialManager;
 import at.htl.afterfall.tutorial.TutorialOverlay;
@@ -1038,6 +1039,11 @@ public class GameController {
         for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
 
         economyDao.save(id, world.getEconomy(), world.getSatisfaction());
+        RankingClient.submitScore(
+            world.getEconomy().getNetWorth(),
+            rank -> showToast("Rang #" + rank + " in der Rangliste! 🏆", false),
+            () -> {}
+        );
         saveGameDao.updateLastSaved(id);
         showToast("Spielstand gespeichert.", false);
     }
@@ -1046,13 +1052,13 @@ public class GameController {
 
     @FXML
     public void onMainMenu() {
-        if (world.getCurrentSave() != null) saveGame();
+        saveGame();
         gameLoop.stop();
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/main.fxml"));
             Scene menuScene = new Scene(loader.load(), 900, 700);
             Stage stage = (Stage) canvasContainer.getScene().getWindow();
-            stage.setMaximized(false);
+            stage.setMaximized(true);
             stage.setScene(menuScene);
         } catch (IOException e) {
             showToast("Fehler beim Öffnen des Menüs.", true);
