@@ -1035,7 +1035,7 @@ public class GameController {
         for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
         for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
         for (Route r   : world.getRoutes())   routeDao.insert(id, r);
-        for (Train t   : world.getTrains())   trainDao.insert(id, t);
+        for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
 
         economyDao.save(id, world.getEconomy(), world.getSatisfaction());
         saveGameDao.updateLastSaved(id);
