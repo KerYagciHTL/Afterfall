@@ -76,6 +76,10 @@ public class DatabaseManager {
                     save_id INTEGER PRIMARY KEY REFERENCES save_games(id) ON DELETE CASCADE,
                     value   REAL    NOT NULL DEFAULT 50.0
                 )""");
+            // Migration: circular column added later
+            try {
+                stmt.executeUpdate("ALTER TABLE routes ADD COLUMN circular INTEGER NOT NULL DEFAULT 0");
+            } catch (SQLException ignored) {}
         } catch (SQLException e) {
             throw new RuntimeException("DB-Schema-Init fehlgeschlagen", e);
         }
