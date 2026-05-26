@@ -11,6 +11,7 @@ public class Station {
     private final DoubleProperty x = new SimpleDoubleProperty();
     private final DoubleProperty y = new SimpleDoubleProperty();
     private final ObservableList<Passenger> waitingPassengers = FXCollections.observableArrayList();
+    private boolean demandingConnection = false;
 
     public Station(int id, String name, double x, double y) {
         this.id   = id;
@@ -30,6 +31,9 @@ public class Station {
     public double getY() { return y.get(); }
 
     public ObservableList<Passenger> getWaitingPassengers() { return waitingPassengers; }
+
+    public boolean isDemandingConnection()         { return demandingConnection; }
+    public void    setDemandingConnection(boolean v) { this.demandingConnection = v; }
 
     @Override
     public String toString() { return name; }

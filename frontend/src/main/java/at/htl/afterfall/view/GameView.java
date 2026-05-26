@@ -306,6 +306,8 @@ public class GameView extends Canvas {
     // ─── Stationen ────────────────────────────────────────────────────────────
 
     private void drawStations(GraphicsContext gc) {
+        double pulse = 0.5 + 0.5 * Math.sin(System.currentTimeMillis() / 500.0);
+
         for (Station s : world.getStations()) {
             boolean hl          = s == highlightStation;
             boolean inRoute     = activeRouteHighlight != null
@@ -313,6 +315,17 @@ public class GameView extends Canvas {
             boolean isFirstStop = inRoute && !activeRouteHighlight.getStops().isEmpty()
                                   && activeRouteHighlight.getStops().get(0) == s;
 
+            // Pulsing ring for stations demanding a connection
+            if (s.isDemandingConnection()) {
+                double alpha = 0.45 + 0.45 * pulse;
+                double extra = (5.0 + 4.0 * pulse) / zoom;
+                gc.setStroke(Color.color(1.0, 0.55 + 0.1 * pulse, 0.0, alpha));
+                gc.setLineWidth(2.5 / zoom);
+                double pr = STATION_RADIUS + extra;
+                gc.strokeOval(s.getX() - pr, s.getY() - pr, pr * 2, pr * 2);
+            }
+
+            // Glow für hervorgehobene Stationen
             if (hl || isFirstStop || inRoute) {
                 Color glowC = hl ? Color.color(1,1,0,0.18)
                             : isFirstStop ? Color.color(0.5, 0.85, 0.78, 0.22)
@@ -322,9 +335,11 @@ public class GameView extends Canvas {
                 gc.fillOval(s.getX() - gr, s.getY() - gr, gr * 2, gr * 2);
             }
 
-            Color fill = hl          ? Color.web("#FFE57F")
-                       : isFirstStop ? Color.web("#80DEEA")
-                       : inRoute     ? Color.web("#CCFF90")
+            // Station-Körper
+            Color fill = hl                          ? Color.web("#FFE57F")
+                       : isFirstStop                 ? Color.web("#80DEEA")
+                       : inRoute                     ? Color.web("#CCFF90")
+                       : s.isDemandingConnection()   ? Color.web("#FFCC80")
                        : Color.web("#E8EAF6");
 
             gc.setFill(fill);

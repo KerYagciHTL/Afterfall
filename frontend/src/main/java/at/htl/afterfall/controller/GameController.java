@@ -1,5 +1,6 @@
 package at.htl.afterfall.controller;
 
+import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.*;
 import at.htl.afterfall.persistence.*;
 import at.htl.afterfall.simulation.GameLoop;
@@ -15,16 +16,21 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.event.Event;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
-import java.time.LocalDateTime;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class GameController {
 
@@ -238,7 +244,6 @@ public class GameController {
             }
         });
 
-        setupTutorial();
         initToastSystem();
 
         canvasContainer.sceneProperty().addListener((obs, old, scene) -> {
@@ -268,7 +273,16 @@ public class GameController {
         });
 
         gameLoop = new GameLoop(world, gameView);
+        gameLoop.setOnNewStation(s ->
+            showToast("Neuer Stadtteil: " + s.getName() + " fordert Anbindung!", true)
+        );
         gameLoop.start();
+
+        // Initial satisfaction color
+        updateSatisfactionColor(world.getSatisfaction().getValue());
+        world.getSatisfaction().valueProperty().addListener((obs, o, n) ->
+            updateSatisfactionColor(n.doubleValue())
+        );
     }
 
     // ─── Track-Interaktion ────────────────────────────────────────────────────
@@ -574,6 +588,13 @@ public class GameController {
             canvasContainer.getChildren().remove(trainShopOverlay);
             trainShopOverlay = null;
         }
+    }
+
+    // ─── Satisfaction Color ───────────────────────────────────────────────────
+
+    private void updateSatisfactionColor(double v) {
+        String color = v >= 70 ? "#69f0ae" : v >= 40 ? "#ffd54f" : "#ff5252";
+        satisfactionLabel.setStyle("-fx-text-fill: " + color + ";");
     }
 
     // ─── €/s Label Update ─────────────────────────────────────────────────────
@@ -956,6 +977,33 @@ public class GameController {
         // TODO: selection + delete implementieren
     }
 
+    // ─── Öffentliche Einstiegspunkte (aufgerufen von MainController) ─────────
+
+    public void startNewGame(SaveGame save) {
+        world.setCurrentSave(save);
+        setupTutorial();
+    }
+
+    public void loadGame(SaveGame save) {
+        world.setCurrentSave(save);
+        int id = save.getId();
+
+        List<Station> stations = stationDao.findAll(id);
+        world.getStations().addAll(stations);
+        Map<Integer, Station> stationMap = stations.stream()
+                .collect(Collectors.toMap(Station::getId, s -> s));
+
+        world.getTracks().addAll(trackDao.findAll(id, stationMap));
+
+        List<Route> routes = routeDao.findAll(id, stationMap);
+        world.getRoutes().addAll(routes);
+        Map<Integer, Route> routeMap = routes.stream()
+                .collect(Collectors.toMap(Route::getId, r -> r));
+
+        List<Train> trains = trainDao.findAll(id, routeMap);
+        world.getTrains().addAll(trains);
+        for (Train t : trains) {
+            if (t.getRoute() != null) t.getRoute().getTrains().add(t);
     private void saveGame() {
         if (world.getCurrentSave() == null) {
             String name = askInput("Spielstand speichern", "Name:", "Mein Spielstand");
@@ -976,8 +1024,58 @@ public class GameController {
         } else {
             saveGameDao.updateLastSaved(world.getCurrentSave().getId());
         }
-        economyDao.save(world.getCurrentSave().getId(), world.getEconomy(), world.getSatisfaction());
+
+        economyDao.load(id, world.getEconomy(), world.getSatisfaction());
+
+        stations.stream().mapToInt(Station::getId).max()
+                .ifPresent(max -> world.setNextStationId(max + 1));
+        world.getTracks().stream().mapToInt(Track::getId).max()
+                .ifPresent(max -> world.setNextTrackId(max + 1));
+        routes.stream().mapToInt(Route::getId).max()
+                .ifPresent(max -> world.setNextRouteId(max + 1));
+        trains.stream().mapToInt(Train::getId).max()
+                .ifPresent(max -> world.setNextTrainId(max + 1));
+
+        gameView.render();
+    }
+
+    // ─── Speichern ───────────────────────────────────────────────────────────
+
+    private void saveGame() {
+        if (world.getCurrentSave() == null) return;
+        int id = world.getCurrentSave().getId();
+
+        // Vollständiges Neuschreiben: löschen in Abhängigkeitsreihenfolge, dann re-insert
+        trainDao.deleteAllBySaveId(id);
+        routeDao.deleteAllBySaveId(id);
+        trackDao.deleteAllBySaveId(id);
+        stationDao.deleteAllBySaveId(id);
+
+        for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
+        for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
+        for (Route r   : world.getRoutes())   routeDao.insert(id, r);
+        for (Train t   : world.getTrains())   trainDao.insert(id, t);
+
+        economyDao.save(id, world.getEconomy(), world.getSatisfaction());
+        saveGameDao.updateLastSaved(id);
         showToast("Spielstand gespeichert.", false);
+    }
+
+    // ─── Zurück zum Hauptmenü ────────────────────────────────────────────────
+
+    @FXML
+    public void onMainMenu() {
+        if (world.getCurrentSave() != null) saveGame();
+        gameLoop.stop();
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/main.fxml"));
+            Scene menuScene = new Scene(loader.load(), 900, 700);
+            Stage stage = (Stage) canvasContainer.getScene().getWindow();
+            stage.setMaximized(false);
+            stage.setScene(menuScene);
+        } catch (IOException e) {
+            showToast("Fehler beim Öffnen des Menüs.", true);
+        }
     }
 
     private void setStatus(String msg) {

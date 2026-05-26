@@ -21,12 +21,22 @@ public class SatisfactionEngine {
 
         Satisfaction sat = world.getSatisfaction();
 
+        // Connectivity: clear demandingConnection flag as soon as a station is served
+        int connected = 0;
+        int demandingUnmet = 0;
         int total = world.getStations().size(), connected = 0;
         for (Station s : world.getStations()) {
-            if (isConnected(s)) connected++;
+            boolean conn = isConnected(s);
+            if (conn) {
+                connected++;
+                if (s.isDemandingConnection()) s.setDemandingConnection(false);
+            } else if (s.isDemandingConnection()) {
+                demandingUnmet++;
+            }
         }
         double connFactor = total > 0 ? (double) connected / total : 0;
 
+        // Average passenger wait time
         double avgWait = 0;
         int totalWaiting = 0;
         var passengers = world.getPassengers();
@@ -38,6 +48,18 @@ public class SatisfactionEngine {
         }
         double waitFactor = Math.min(avgWait / MAX_WAIT, 1.0);
 
+        // Crowding: active routes with no trains OR where waiting load exceeds total capacity
+        int activeRoutes = 0;
+        int crowded      = 0;
+        for (Route r : world.getRoutes()) {
+            if (!r.isActive() || r.getStops().size() < 2) continue;
+            activeRoutes++;
+            if (r.getTrains().isEmpty()) { crowded++; continue; }
+            int cap     = 0;
+            for (Train t : r.getTrains()) cap += t.getType().capacity;
+            int waiting = 0;
+            for (Station s : r.getStops()) waiting += s.getWaitingPassengers().size();
+            if (waiting > cap) crowded++;
         int totalOnboard = 0;
         for (Train t : world.getTrains()) totalOnboard += t.getOnboardCount();
         // Hoher Wert = Züge sind voll im Einsatz; 0 = niemand wird befördert
@@ -51,14 +73,14 @@ public class SatisfactionEngine {
         }
         double emptyFactor = totalRoutes > 0 ? (double) empty / totalRoutes : 0;
 
-        // target ∈ [20, 100]; 90+ nur mit aktivem Management erreichbar
-        double target  = 55 + 25 * connFactor + 20 * deliveryBonus
-                            - 25 * waitFactor  - 10 * emptyFactor;
-        double current = sat.getValue();
-        double diff    = target - current;
-        // Steigt schnell, fällt langsam → stabil wenn alles passt
-        double rate    = diff > 0 ? 0.025 : 0.008;
-        sat.setValue(current + diff * rate * accum);
+        double connFactor    = total > 0 ? (double) connected / total : 0;
+        double waitFactor    = Math.min(avgWait / MAX_WAIT, 1.0);
+        double priceFactor   = Math.min(Math.max(0, (eco.getTicketPricePerStop() - FAIR_PRICE) / FAIR_PRICE), 1.0);
+        double crowdFactor   = activeRoutes > 0 ? (double) crowded / activeRoutes : 0;
+        double demandPenalty = total > 0 ? (double) demandingUnmet / total * 20 : 0;
+
+        double target = 50 + 30 * connFactor - 20 * waitFactor - 15 * priceFactor - 15 * crowdFactor - demandPenalty;
+        sat.setValue(sat.getValue() + (target - sat.getValue()) * 0.01 * accum);
     }
 
     private boolean isConnected(Station s) {

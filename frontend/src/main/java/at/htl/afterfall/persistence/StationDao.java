@@ -50,4 +50,14 @@ public class StationDao {
             throw new RuntimeException(e);
         }
     }
+
+    public void deleteAllBySaveId(int saveId) {
+        try (PreparedStatement ps = DatabaseManager.getConnection()
+                .prepareStatement("DELETE FROM stations WHERE save_id = ?")) {
+            ps.setInt(1, saveId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

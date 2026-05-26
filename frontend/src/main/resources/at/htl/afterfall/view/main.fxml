@@ -1,24 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
 
 <BorderPane xmlns="http://javafx.com/javafx/23"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="at.htl.afterfall.controller.MainController"
-            onKeyPressed="#onKeyPressed"
-            focusTraversable="true">
+            style="-fx-background-color: #0c0d18;">
 
     <center>
-        <VBox alignment="CENTER" spacing="16" style="-fx-padding: 40;">
-            <Label text="Afterfall"
-                   style="-fx-font-size: 48px; -fx-font-weight: bold;"/>
-            <Label fx:id="balanceLabel"
-                   style="-fx-font-size: 18px;"/>
-            <Label fx:id="satisfactionLabel"
-                   style="-fx-font-size: 18px;"/>
-            <Label fx:id="netWorthLabel"
-                   style="-fx-font-size: 18px;"/>
+        <VBox alignment="CENTER" spacing="0"
+              style="-fx-padding: 60 0 60 0;">
+
+            <!-- Titel -->
+            <Label text="AFTERFALL"
+                   style="-fx-font-size: 56; -fx-font-weight: bold; -fx-text-fill: white;
+                          -fx-effect: dropshadow(gaussian, rgba(100,181,246,0.4), 20, 0, 0, 0);"/>
+            <Label text="U-Bahn Manager"
+                   style="-fx-font-size: 17; -fx-text-fill: #546e7a; -fx-padding: 4 0 36 0;"/>
+
+            <!-- Neues Spiel -->
+            <Button text="+ Neues Spiel" onAction="#onNewGame"
+                    prefWidth="300" prefHeight="54"
+                    style="-fx-background-color: #1b5e20; -fx-text-fill: white;
+                           -fx-font-size: 17; -fx-font-weight: bold; -fx-cursor: hand;
+                           -fx-background-radius: 10;
+                           -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 8, 0, 0, 2);"/>
+
+            <!-- Trennlinie -->
+            <Label text="Gespeicherte Spielstände"
+                   style="-fx-text-fill: #37474f; -fx-font-size: 12; -fx-padding: 32 0 10 0;"/>
+
+            <!-- Spielstand-Liste -->
+            <ListView fx:id="saveListView" prefWidth="500" prefHeight="260"
+                      style="-fx-background-color: #13141f; -fx-border-color: #1e2030;
+                             -fx-border-radius: 8; -fx-background-radius: 8;"/>
+
+            <!-- Aktions-Buttons -->
+            <HBox spacing="12" alignment="CENTER" style="-fx-padding: 14 0 0 0;">
+                <Button fx:id="loadBtn" text="Spielstand laden" onAction="#onLoad"
+                        prefWidth="230" prefHeight="44"
+                        style="-fx-background-color: #0d47a1; -fx-text-fill: white;
+                               -fx-font-size: 14; -fx-cursor: hand; -fx-background-radius: 8;"/>
+                <Button fx:id="deleteBtn" text="Löschen" onAction="#onDelete"
+                        prefWidth="140" prefHeight="44"
+                        style="-fx-background-color: #b71c1c; -fx-text-fill: white;
+                               -fx-font-size: 14; -fx-cursor: hand; -fx-background-radius: 8;"/>
+            </HBox>
+
+            <!-- Statusmeldung -->
+            <Label fx:id="statusLabel" text=""
+                   style="-fx-text-fill: #90a4ae; -fx-font-size: 12; -fx-padding: 14 0 0 0;"/>
+
         </VBox>
     </center>
 
