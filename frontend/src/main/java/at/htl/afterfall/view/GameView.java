@@ -285,8 +285,12 @@ public class GameView extends Canvas {
         double ex = snapTarget != null ? snapTarget.getX() : dragWX;
         double ey = snapTarget != null ? snapTarget.getY() : dragWY;
 
+        Color base = pressedSegment != null
+                ? pressedSegment.route.getColor()
+                : Color.WHITE;
+
         gc.save();
-        gc.setStroke(Color.color(1, 1, 1, 0.65));
+        gc.setStroke(Color.color(base.getRed(), base.getGreen(), base.getBlue(), 0.65));
         gc.setLineWidth(5.0 / zoom);
         gc.setLineDashes(10.0 / zoom, 6.0 / zoom);
         if (dragFixedStation != null)
