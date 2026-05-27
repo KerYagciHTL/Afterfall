@@ -5,6 +5,8 @@ on:
 
 jobs:
   build:
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -63,23 +65,24 @@ jobs:
       working-directory: frontend/target/dist
       shell: bash
       run: |
+        mkdir -p ../../../final-artifacts
         if [ "$RUNNER_OS" == "Linux" ]; then
-          tar -czvf ../../../${{ matrix.artifact_name }}.tar.gz Afterfall/
+          tar -czvf ../../../final-artifacts/${{ matrix.artifact_name }}.tar.gz Afterfall/
         else
           # Windows ZIP
-          powershell Compress-Archive -Path Afterfall -DestinationPath ../../../${{ matrix.artifact_name }}.zip
+          powershell Compress-Archive -Path Afterfall -DestinationPath ../../../final-artifacts/${{ matrix.artifact_name }}.zip
         fi
         
     - name: Move Mac DMG
       if: runner.os == 'macOS'
       working-directory: frontend/target/dist
-      run: mv *.dmg ../../../${{ matrix.artifact_name }}.dmg
+      shell: bash
+      run: |
+        mkdir -p ../../../final-artifacts
+        mv *.dmg ../../../final-artifacts/${{ matrix.artifact_name }}.dmg
         
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
-        path: |
-          *.zip
-          *.tar.gz
-          *.dmg
+        path: final-artifacts/
