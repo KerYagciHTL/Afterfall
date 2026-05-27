@@ -54,6 +54,8 @@ public class GameController {
     @FXML
     private ToggleButton buildTrackBtn;
     @FXML
+    private ToggleButton buildRouteBtn;
+    @FXML
     private StackPane canvasContainer;
     @FXML
     private ListView<Route> routeListView;
@@ -108,6 +110,15 @@ public class GameController {
         gameView.setTrackDemolishCb(this::handleTrackDemolish);
         gameView.setRouteSegmentRedirectCb(this::handleRouteSegmentRedirect);
         gameView.setRouteSegmentClickCb(this::handleRouteSegmentClick);
+        gameView.setDragBlockedCb(() -> {
+            String mode = switch (buildMode) {
+                case BUILD_STATION -> "Station-Modus";
+                case BUILD_TRACK   -> "Strecken-Modus";
+                case BUILD_ROUTE   -> "Routen-Modus";
+                default            -> "Baumodus";
+            };
+            showToast(mode + " aktiv – ESC drücken, dann Route verschieben.", true);
+        });
 
         // --- HUD Bindings mit Währungsformatierung ---
         balanceLabel.textProperty().bind(Bindings.createStringBinding(
@@ -261,10 +272,11 @@ public class GameController {
                         case DELETE -> deleteSelected();
                         case S -> {
                             if (e.isControlDown()) saveGame();
+                            else if (buildMode == BuildMode.BUILD_STATION) cancelBuildMode();
                             else activateBuildStation();
                         }
-                        case T -> activateBuildTrack();
-                        case R -> onNewRoute();
+                        case T -> { if (buildMode == BuildMode.BUILD_TRACK) cancelBuildMode(); else activateBuildTrack(); }
+                        case R -> { if (buildMode == BuildMode.BUILD_ROUTE) cancelBuildMode(); else activateBuildRoute(); }
                     }
                 });
             }
@@ -340,14 +352,12 @@ public class GameController {
                     world.getPassengers().removeAll(station.getWaitingPassengers());
                     station.getWaitingPassengers().clear();
 
-                    // Station aus allen Routen entfernen, Züge resetten
+                    // Station aus allen Routen entfernen, Zug-Indizes anpassen
                     for (Route route : world.getRoutes()) {
-                        if (route.getStops().remove(station)) {
-                            for (Train t : route.getTrains()) {
-                                t.setCurrentStopIndex(0);
-                                t.setPosition(0.0);
-                                t.setForward(true);
-                            }
+                        int removeIdx = route.getStops().indexOf(station);
+                        if (removeIdx >= 0) {
+                            route.getStops().remove(station);
+                            adjustTrainsAfterStopRemove(route, removeIdx);
                         }
                     }
 
@@ -384,12 +394,9 @@ public class GameController {
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
                 .ifPresent(r -> {
+                    int removeIdx = route.getStops().indexOf(nearest);
                     route.getStops().remove(nearest);
-                    for (Train t : route.getTrains()) {
-                        t.setCurrentStopIndex(0);
-                        t.setPosition(0.0);
-                        t.setForward(true);
-                    }
+                    adjustTrainsAfterStopRemove(route, removeIdx);
                     routeListView.refresh();
                     gameView.render();
                     showToast("Verbindung getrennt.", false);
@@ -402,36 +409,54 @@ public class GameController {
 
         List<Station> stops = route.getStops();
 
-        // Ziel bereits in Route → abbrechen
         if (stops.contains(newStation)) {
             showToast("Diese Station ist bereits Teil der Route.", true);
             return;
         }
 
-        // Strecken bauen falls nötig: stopA↔new UND stopB↔new
-        boolean needA = !hasTrackBetween(stopA, newStation);
-        boolean needB = !hasTrackBetween(stopB, newStation);
-        if ((needA || needB) && world.getEconomy().getBalance() < 0) {
-            showToast("Im Minus kann keine neue Strecke gebaut werden.", true);
+        boolean needA  = !hasTrackBetween(stopA, newStation);
+        boolean needB  = !hasTrackBetween(stopB, newStation);
+        int     needed = (needA ? 1 : 0) + (needB ? 1 : 0);
+        double  cost   = needed * TRACK_BUILD_COST();
+        if (needed > 0 && world.getEconomy().getBalance() < cost) {
+            showToast("Zu wenig Geld! Benötigt: " + formatCurrency(cost)
+                    + " für " + needed + " Strecke" + (needed > 1 ? "n" : "") + ".", true);
             return;
         }
-        boolean builtAny = needA || needB;
-        if (needA) buildTrackSilent(stopA, newStation);
-        if (needB) buildTrackSilent(stopB, newStation);
 
-        // Station zwischen stopA und stopB einfügen (beide bleiben erhalten)
-        stops.add(insertAfterIndex + 1, newStation);
-
-        // Züge zurücksetzen
-        for (Train t : route.getTrains()) {
-            t.setCurrentStopIndex(0);
-            t.setPosition(0.0);
-            t.setForward(true);
+        // ── Alle In-Memory-Ops zuerst, DANN DB ──────────────────────────────
+        // Wichtig: kein DB-Aufruf zwischen den Schritten, sonst unterbricht
+        // eine RuntimeException die Kette und lässt den State inkonsistent.
+        Track tA = null, tB = null;
+        if (needA) {
+            tA = new Track(world.nextTrackId(), stopA, newStation);
+            world.getTracks().add(tA);
+            world.getEconomy().addBalance(-TRACK_BUILD_COST());
+            world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
         }
+        if (needB) {
+            tB = new Track(world.nextTrackId(), stopB, newStation);
+            world.getTracks().add(tB);
+            world.getEconomy().addBalance(-TRACK_BUILD_COST());
+            world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
+        }
+        stops.add(insertAfterIndex + 1, newStation);
+        adjustTrainsAfterStopInsert(route, insertAfterIndex + 1);
 
         routeListView.refresh();
         gameView.render();
-        showToast("Station eingefügt" + (builtAny ? " – neue Strecken gebaut." : "."), false);
+        showToast("Station eingefügt" + (needed > 0 ? " – " + needed + " Strecke(n) gebaut." : "."), false);
+
+        // DB-Persistenz nachgelagert – Exception darf UI nicht stoppen
+        if (world.getCurrentSave() != null) {
+            int sid = world.getCurrentSave().getId();
+            try {
+                if (tA != null) tA.setId(trackDao.insert(sid, tA));
+                if (tB != null) tB.setId(trackDao.insert(sid, tB));
+            } catch (Exception ex) {
+                System.err.println("Track-Persistenz fehlgeschlagen: " + ex.getMessage());
+            }
+        }
     }
 
     private boolean hasTrackBetween(Station a, Station b) {
@@ -443,23 +468,47 @@ public class GameController {
     }
 
     /**
-     * Baut eine Strecke ohne Gleichgewichtsprüfung (intern für Route-Redirect).
-     */
-    private void buildTrackSilent(Station from, Station to) {
-        Track t = new Track(world.nextTrackId(), from, to);
-        world.getTracks().add(t);
-        world.getEconomy().addBalance(-TRACK_BUILD_COST());
-        world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
-        if (world.getCurrentSave() != null) {
-            int dbId = trackDao.insert(world.getCurrentSave().getId(), t);
-            t.setId(dbId);
-        }
-    }
-
-    /**
      * Verteilt alle Züge einer Route gleichmäßig auf zufällig versetzte Stops,
      * abwechselnd vor-/rückwärts, um Überlappungen zu vermeiden.
      */
+    private void spawnNewTrainOnRoute(Train newTrain, Route route) {
+        List<Station> stops = route.getStops();
+        if (stops.size() < 2) {
+            newTrain.setCurrentStopIndex(0);
+            newTrain.setPosition(0.0);
+            newTrain.setForward(true);
+            return;
+        }
+        int S = stops.size();
+        List<Train> others = route.getTrains().stream()
+                .filter(t -> t != newTrain).toList();
+
+        int bestIdx;
+        if (others.isEmpty()) {
+            bestIdx = rng.nextInt(S);
+        } else {
+            bestIdx = 0;
+            double bestMinDist = -1;
+            for (int i = 0; i < S; i++) {
+                double minDist = Double.MAX_VALUE;
+                for (Train t : others) {
+                    int diff = Math.abs(t.getCurrentStopIndex() - i);
+                    double d = Math.min(diff, S - diff);
+                    if (d < minDist) minDist = d;
+                }
+                if (minDist > bestMinDist) {
+                    bestMinDist = minDist;
+                    bestIdx = i;
+                }
+            }
+        }
+
+        boolean fwd = !(bestIdx == S - 1 && !route.isCircular());
+        newTrain.setCurrentStopIndex(bestIdx);
+        newTrain.setPosition(0.0);
+        newTrain.setForward(fwd);
+    }
+
     private void distributeTrainsOnRoute(Route route) {
         List<Train> trains = route.getTrains();
         List<Station> stops = route.getStops();
@@ -488,6 +537,9 @@ public class GameController {
     private void setBuildMode(BuildMode mode) {
         buildMode = mode;
         gameView.setTrackInteractionEnabled(mode == BuildMode.NONE);
+        if (buildStationBtn != null) buildStationBtn.setSelected(mode == BuildMode.BUILD_STATION);
+        if (buildTrackBtn   != null) buildTrackBtn.setSelected(mode == BuildMode.BUILD_TRACK);
+        if (buildRouteBtn   != null) buildRouteBtn.setSelected(mode == BuildMode.BUILD_ROUTE);
     }
 
     // ─── Toast-System ────────────────────────────────────────────────────────
@@ -781,13 +833,44 @@ public class GameController {
 
     private void addStationToRoute(double wx, double wy) {
         if (activeRoute == null) return;
-        Station clicked = gameView.findStationAt(wx, wy);
-        if (clicked == null) return;
 
+        Track clickedTrack = gameView.findTrackAt(wx, wy);
+        if (clickedTrack == null) {
+            showToast("Klicke auf eine Strecke, um sie zur Route hinzuzufügen.", true);
+            return;
+        }
+
+        Station trackA = clickedTrack.getFrom();
+        Station trackB = clickedTrack.getTo();
         List<Station> stops = activeRoute.getStops();
 
-        // Erste Station nochmal → Kreis schließen
-        if (!stops.isEmpty() && clicked == stops.getFirst() && stops.size() >= 2) {
+        if (stops.isEmpty()) {
+            // Erste Strecke: Route jetzt erst zur Welt hinzufügen
+            if (!world.getRoutes().contains(activeRoute)) {
+                activeRoute.setName("Linie " + (world.getRoutes().size() + 1));
+                world.getRoutes().add(activeRoute);
+            }
+            stops.add(trackA);
+            stops.add(trackB);
+            setStatus("Nächste angrenzende Strecke anklicken ↺  |  ESC = Fertig");
+            routeListView.refresh();
+            gameView.render();
+            return;
+        }
+
+        Station lastStop = stops.getLast();
+
+        // Strecke muss am letzten Halt ansetzen
+        Station nextStop;
+        if (trackA == lastStop)      nextStop = trackB;
+        else if (trackB == lastStop) nextStop = trackA;
+        else {
+            showToast("Diese Strecke verbindet nicht mit dem letzten Halt.", true);
+            return;
+        }
+
+        // Ersten Halt nochmal → Kreis schließen
+        if (nextStop == stops.getFirst() && stops.size() >= 2) {
             if (!activeRoute.isCircular()) {
                 activeRoute.setCircular(true);
                 routeListView.refresh();
@@ -801,18 +884,12 @@ public class GameController {
             return;
         }
 
-        // Doppelte Station verhindern
-        if (stops.contains(clicked)) {
+        if (stops.contains(nextStop)) {
             showToast("Diese Station ist bereits in der Route.", true);
             return;
         }
 
-        stops.add(clicked);
-
-        if (stops.size() == 2 && !activeRoute.isCircular()) {
-            setStatus("Tipp: Erste Station nochmal klicken = Kreis ↺  |  ESC = Fertig");
-        }
-
+        stops.add(nextStop);
         routeListView.refresh();
         gameView.render();
     }
@@ -843,40 +920,20 @@ public class GameController {
 
     @FXML
     public void onBuildStation() {
-        if (buildStationBtn.isSelected()) {
-            setBuildMode(BuildMode.BUILD_STATION);
-            buildTrackBtn.setSelected(false);
-            showToast("Klicke auf die Karte, um eine Station zu platzieren.", false);
-        } else {
-            setBuildMode(BuildMode.NONE);
-        }
+        if (buildStationBtn.isSelected()) activateBuildStation();
+        else cancelBuildMode();
     }
 
     @FXML
     public void onBuildTrack() {
-        if (buildTrackBtn.isSelected()) {
-            setBuildMode(BuildMode.BUILD_TRACK);
-            trackStart = null;
-            buildStationBtn.setSelected(false);
-            showToast("Erste Station anklicken, dann zweite Station anklicken.", false);
-        } else {
-            setBuildMode(BuildMode.NONE);
-        }
+        if (buildTrackBtn.isSelected()) activateBuildTrack();
+        else cancelBuildMode();
     }
 
     @FXML
     public void onNewRoute() {
-        Color color = colorGen.generateRouteColor();
-        Route route = new Route(world.nextRouteId(), color);
-        world.getRoutes().add(route);
-        route.setName("Linie " + world.getRoutes().size());
-        activeRoute = route;
-        setBuildMode(BuildMode.BUILD_ROUTE);
-        buildStationBtn.setSelected(false);
-        buildTrackBtn.setSelected(false);
-        setStatus("Stationen anklicken → Route aufbauen.  ESC = Fertig.");
-        gameView.setActiveRouteHighlight(route);
-        showToast("Klicke Stationen an, um die Route aufzubauen. ESC zum Abschließen.", false);
+        if (buildRouteBtn.isSelected()) activateBuildRoute();
+        else cancelBuildMode();
     }
 
     @FXML
@@ -888,8 +945,6 @@ public class GameController {
         }
         activeRoute = selected;
         setBuildMode(BuildMode.BUILD_ROUTE);
-        buildStationBtn.setSelected(false);
-        buildTrackBtn.setSelected(false);
         setStatus("Bearbeite: " + selected + "  |  ESC = Fertig.");
         gameView.setActiveRouteHighlight(selected);
     }
@@ -950,7 +1005,7 @@ public class GameController {
             if (selected.getRoute() != null) selected.getRoute().getTrains().remove(selected);
             selected.setRoute(route);
             route.getTrains().add(selected);
-            distributeTrainsOnRoute(route);
+            spawnNewTrainOnRoute(selected, route);
             trainListView.refresh();
             routeListView.refresh();
         });
@@ -987,15 +1042,23 @@ public class GameController {
 
     private void activateBuildStation() {
         setBuildMode(BuildMode.BUILD_STATION);
-        buildStationBtn.setSelected(true);
-        buildTrackBtn.setSelected(false);
+        showToast("Klicke auf die Karte, um eine Station zu platzieren.", false);
     }
 
     private void activateBuildTrack() {
-        setBuildMode(BuildMode.BUILD_TRACK);
         trackStart = null;
-        buildTrackBtn.setSelected(true);
-        buildStationBtn.setSelected(false);
+        setBuildMode(BuildMode.BUILD_TRACK);
+        showToast("Erste Station anklicken, dann zweite Station anklicken.", false);
+    }
+
+    private void activateBuildRoute() {
+        Color color = colorGen.generateRouteColor();
+        Route route = new Route(world.nextRouteId(), color);
+        activeRoute  = route;
+        setBuildMode(BuildMode.BUILD_ROUTE); // setzt buildRouteBtn.selected=true
+        setStatus("Strecke anklicken → Route aufbauen.  ESC = Fertig.");
+        gameView.setActiveRouteHighlight(route);
+        showToast("Klicke auf eine Strecke, um die Route aufzubauen. ESC zum Abschließen.", false);
     }
 
     private void cancelBuildMode() {
@@ -1003,7 +1066,7 @@ public class GameController {
             closeTrainShop();
             return;
         }
-        setBuildMode(BuildMode.NONE);
+        setBuildMode(BuildMode.NONE); // deselektiert automatisch alle Buttons
         activeRoute = null;
         trackStart = null;
         gameView.setHighlightStation(null);
@@ -1012,8 +1075,6 @@ public class GameController {
         gameView.setSelectedTrain(null);
         routeListView.getSelectionModel().clearSelection();
         trainListView.getSelectionModel().clearSelection();
-        buildStationBtn.setSelected(false);
-        buildTrackBtn.setSelected(false);
         setStatus(null);
         gameView.render();
     }
@@ -1126,5 +1187,33 @@ public class GameController {
         dlg.setTitle(title);
         dlg.setHeaderText(header);
         return dlg.showAndWait().orElse(null);
+    }
+
+    // ─── Zug-Index-Anpassung bei Route-Änderungen ────────────────────────────
+
+    private void adjustTrainsAfterStopInsert(Route route, int insertedIdx) {
+        for (Train t : route.getTrains()) {
+            if (t.getCurrentStopIndex() >= insertedIdx) {
+                t.setCurrentStopIndex(t.getCurrentStopIndex() + 1);
+            }
+        }
+    }
+
+    private void adjustTrainsAfterStopRemove(Route route, int removedIdx) {
+        List<Station> stops = route.getStops(); // bereits ohne den entfernten Stop
+        if (stops.size() < 2) return;           // moveTrains() überspringt diese Route ohnehin
+        for (Train t : route.getTrains()) {
+            int idx = t.getCurrentStopIndex();
+            if (idx == removedIdx) {
+                t.setCurrentStopIndex(Math.max(0, removedIdx - 1));
+                t.setPosition(0.0);
+            } else if (idx > removedIdx) {
+                t.setCurrentStopIndex(idx - 1);
+            }
+            if (t.getCurrentStopIndex() >= stops.size()) {
+                t.setCurrentStopIndex(stops.size() - 1);
+                t.setPosition(0.0);
+            }
+        }
     }
 }

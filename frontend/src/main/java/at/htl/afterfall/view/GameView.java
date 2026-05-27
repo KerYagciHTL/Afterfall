@@ -72,6 +72,7 @@ public class GameView extends Canvas {
     private Consumer<Track>              trackDemolishCb;
     private RouteSegmentRedirectCallback routeSegmentRedirectCb;
     private RouteSegmentClickCallback    routeSegmentClickCb;
+    private Runnable                     dragBlockedCb;
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
@@ -82,6 +83,10 @@ public class GameView extends Canvas {
             if (e.isSecondaryButtonDown()) {
                 dragStartX = e.getX(); dragStartY = e.getY();
                 camStartX  = camX;    camStartY  = camY;
+            } else if (e.getButton() == MouseButton.PRIMARY && !trackInteractionEnabled) {
+                double wx = toWorldX(e.getX()), wy = toWorldY(e.getY());
+                if (findRouteSegmentAt(wx, wy) != null && dragBlockedCb != null)
+                    dragBlockedCb.run();
             } else if (e.getButton() == MouseButton.PRIMARY && trackInteractionEnabled) {
                 pressSX        = e.getX();
                 pressSY        = e.getY();
@@ -118,14 +123,16 @@ public class GameView extends Canvas {
                     dragDetected = true;
                     dragWX       = toWorldX(e.getX());
                     dragWY       = toWorldY(e.getY());
-                    snapTarget   = findSnapStation(dragWX, dragWY, dragFixedStation);
+                    snapTarget   = findSnapStation(dragWX, dragWY, dragFixedStation, dragOtherStation);
                     render();
                 }
             }
         });
 
         setOnMouseReleased(e -> {
-            if (e.getButton() == MouseButton.PRIMARY && trackInteractionEnabled) {
+            if (e.getButton() != MouseButton.PRIMARY) return;
+
+            if (trackInteractionEnabled) {
                 if (pressedSegment != null) {
                     List<Station> stops = pressedSegment.route.getStops();
                     Station sA      = stops.get(pressedSegment.stopIndexA);
@@ -134,7 +141,7 @@ public class GameView extends Canvas {
                     Station other   = movableIsFirst ? sB : sA;
 
                     if (dragDetected)
-                        snapTarget = findSnapStation(toWorldX(e.getX()), toWorldY(e.getY()), dragFixedStation);
+                        snapTarget = findSnapStation(toWorldX(e.getX()), toWorldY(e.getY()), dragFixedStation, dragOtherStation);
 
                     if (dragDetected && snapTarget != null) {
                         lastClickConsumed = true;
@@ -150,14 +157,16 @@ public class GameView extends Canvas {
                     lastClickConsumed = true;
                     if (trackDemolishCb != null) trackDemolishCb.accept(pressedTrack);
                 }
-                pressedSegment   = null;
-                pressedTrack     = null;
-                dragDetected     = false;
-                dragFixedStation = null;
-                dragOtherStation = null;
-                snapTarget       = null;
-                render();
             }
+
+            // Immer aufräumen — verhindert persistente Strich-Vorschau
+            pressedSegment   = null;
+            pressedTrack     = null;
+            dragDetected     = false;
+            dragFixedStation = null;
+            dragOtherStation = null;
+            snapTarget       = null;
+            render();
         });
 
         setOnScroll(e -> {
@@ -528,12 +537,14 @@ public class GameView extends Canvas {
         return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
     }
 
-    private Station findSnapStation(double wx, double wy, Station exclude) {
-        double  snapRadius = 50.0;
+    private Station findSnapStation(double wx, double wy, Station... excludes) {
+        double  snapRadius = 80.0;
         Station nearest    = null;
         double  minDist    = snapRadius;
         for (Station s : world.getStations()) {
-            if (s == exclude) continue;
+            boolean skip = false;
+            for (Station ex : excludes) if (s == ex) { skip = true; break; }
+            if (skip) continue;
             double d = Math.hypot(s.getX()-wx, s.getY()-wy);
             if (d < minDist) { minDist = d; nearest = s; }
         }
@@ -564,6 +575,7 @@ public class GameView extends Canvas {
     }
 
     public void setTrackInteractionEnabled(boolean b)                       { trackInteractionEnabled  = b; }
+    public void setDragBlockedCb(Runnable cb)                               { dragBlockedCb            = cb; }
     public void setTrackDemolishCb(Consumer<Track> cb)                      { trackDemolishCb          = cb; }
     public void setRouteSegmentRedirectCb(RouteSegmentRedirectCallback cb)  { routeSegmentRedirectCb   = cb; }
     public void setRouteSegmentClickCb(RouteSegmentClickCallback cb)        { routeSegmentClickCb      = cb; }

@@ -41,6 +41,7 @@ public class PassengerSimulation {
     }
 
     private void spawnFrom(Station origin, List<Station> allStations) {
+
         List<Station> reachable = new ArrayList<>();
         for (Route r : world.getRoutes()) {
             if (!r.isActive() || !r.getStops().contains(origin)) continue;
@@ -48,7 +49,6 @@ public class PassengerSimulation {
                 if (s != origin && !reachable.contains(s)) reachable.add(s);
             }
         }
-        if (reachable.isEmpty()) return;
 
         double avgDist = 0;
         for (Station s : allStations) {
@@ -58,6 +58,18 @@ public class PassengerSimulation {
         if (allStations.size() > 1) avgDist /= (allStations.size() - 1);
         double spawnChance = Math.min(avgDist / GameConfig.get().spawnChanceDivisor, 1.0);
         if (rng.nextDouble() > spawnChance) return;
+
+        if (reachable.isEmpty()) {
+            // Station nicht angebunden → Passagier wartet ohne Weg → Zufriedenheit sinkt
+            List<Station> others = allStations.stream().filter(s -> s != origin).toList();
+            if (others.isEmpty()) return;
+            Station dest = others.get(rng.nextInt(others.size()));
+            Passenger p = new Passenger(nextId++, origin, dest);
+            p.setFare(calcFare(List.of(origin, dest)));
+            origin.getWaitingPassengers().add(p);
+            world.getPassengers().add(p);
+            return;
+        }
 
         double[] weights = new double[reachable.size()];
         double totalWeight = 0;
@@ -139,6 +151,13 @@ public class PassengerSimulation {
             if (available <= 0) break;
             if (!train.getRoute().getStops().contains(p.getDestination())) continue;
             List<Station> path = p.getPath();
+            if (path.isEmpty()) {
+                // Passagier hatte keine Route → jetzt versuchen
+                path = pathFinder.findPath(station, p.getDestination());
+                if (path.isEmpty()) continue;
+                p.setPath(path);
+                p.setFare(calcFare(path));
+            }
             int idx = path.indexOf(station);
             if (idx >= 0 && idx < path.size() - 1) {
                 station.getWaitingPassengers().remove(p);

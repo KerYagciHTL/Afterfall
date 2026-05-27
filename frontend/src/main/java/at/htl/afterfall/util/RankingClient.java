@@ -50,6 +50,21 @@ public class RankingClient {
         } catch (Exception ignored) {}
     }
 
+    public static boolean hasPlayerName() {
+        return !loadPlayerName().isBlank();
+    }
+
+    public static void ensurePlayerName() {
+        if (hasPlayerName()) return;
+        TextInputDialog dlg = new TextInputDialog("");
+        dlg.setTitle("Willkommen!");
+        dlg.setHeaderText("Dein Name für die Rangliste:");
+        dlg.setContentText("Name:");
+        dlg.showAndWait().ifPresent(name -> {
+            if (!name.isBlank()) savePlayerName(name.strip());
+        });
+    }
+
     public static List<RankingEntry> fetchRanking() {
         try {
             var client = HttpClient.newHttpClient();
