@@ -27,7 +27,7 @@ public class TutorialManager {
             new TutorialStep(
                 "Route erstellen",
                 "Drücke [R] oder klicke auf '＋ Route'.\n" +
-                "Klicke dann nacheinander auf beide Stationen.\n" +
+                "Klicke dann auf die Strecke zwischen\nden Stationen.\n" +
                 "ESC beendet den Route-Modus.",
                 w -> w.getRoutes().stream().anyMatch(r -> r.getStops().size() >= 2)
             ),
@@ -47,7 +47,8 @@ public class TutorialManager {
                 "Route umleiten",
                 "Klicke auf die farbige Routenlinie zwischen\n" +
                 "zwei Stationen und ziehe sie zur neuen Station.\n" +
-                "Sie wird automatisch eingefügt.",
+                "Fehlende Strecken werden automatisch gebaut.\n" +
+                "Die neue Station wird in die Route eingefügt.",
                 w -> w.getRoutes().stream().anyMatch(r -> r.getStops().size() >= 3)
             ),
             new TutorialStep(

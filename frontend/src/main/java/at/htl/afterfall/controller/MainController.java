@@ -90,6 +90,9 @@ public class MainController {
 
         refreshList();
         loadRanking();
+
+        // Spielername einmalig beim ersten Start abfragen
+        Platform.runLater(RankingClient::ensurePlayerName);
     }
 
     private void loadRanking() {
