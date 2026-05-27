@@ -32,6 +32,7 @@ import javafx.util.Duration;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class GameController {
@@ -72,6 +73,7 @@ public class GameController {
     private Region toastSpacer;
     private VBox trainShopOverlay = null;
     private long lastRateUiUpdate = 0;
+    private final Random rng = new Random();
     private TutorialManager tutorialManager;
     private TutorialOverlay tutorialOverlay;
     private Timeline        tutorialTimer;
@@ -218,8 +220,9 @@ public class GameController {
 
                 String icon = switch (t.getType()) {
                     case STANDARD -> "🚃";
-                    case MEDIUM -> "🚆";
-                    case SUPER -> "🚄";
+                    case MEDIUM   -> "🚆";
+                    case SUPER    -> "🚄";
+                    case DELUXE   -> "🚅";
                 };
                 VBox box = new VBox(3);
                 box.setStyle("-fx-background-color: transparent;");
@@ -453,6 +456,33 @@ public class GameController {
         }
     }
 
+    /**
+     * Verteilt alle Züge einer Route gleichmäßig auf zufällig versetzte Stops,
+     * abwechselnd vor-/rückwärts, um Überlappungen zu vermeiden.
+     */
+    private void distributeTrainsOnRoute(Route route) {
+        List<Train> trains = route.getTrains();
+        List<Station> stops = route.getStops();
+        if (trains.isEmpty() || stops.size() < 2) return;
+
+        int S = stops.size();
+        int N = trains.size();
+        int offset = rng.nextInt(S);
+
+        for (int i = 0; i < N; i++) {
+            Train t = trains.get(i);
+            int idx = (offset + i * Math.max(1, S / N)) % S;
+            boolean fwd = (i % 2 == 0);
+            if (!route.isCircular()) {
+                if (idx == S - 1) fwd = false;
+                else if (idx == 0) fwd = true;
+            }
+            t.setCurrentStopIndex(idx);
+            t.setPosition(0.0);
+            t.setForward(fwd);
+        }
+    }
+
     // ─── BuildMode-Verwaltung ─────────────────────────────────────────────────
 
     private void setBuildMode(BuildMode mode) {
@@ -537,7 +567,12 @@ public class GameController {
     }
 
     private VBox buildTrainCard(TrainType type) {
-        String icon = type == TrainType.STANDARD ? "🚃" : type == TrainType.MEDIUM ? "🚆" : "🚄";
+        String icon = switch (type) {
+            case STANDARD -> "🚃";
+            case MEDIUM   -> "🚆";
+            case SUPER    -> "🚄";
+            case DELUXE   -> "🚅";
+        };
         String baseStyle = "-fx-background-color: #2a2d38; -fx-background-radius: 14;" +
                 " -fx-padding: 26 22 26 22;" +
                 " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);";
@@ -913,19 +948,9 @@ public class GameController {
         dlg.setHeaderText("Route für diesen Zug:");
         dlg.showAndWait().ifPresent(route -> {
             if (selected.getRoute() != null) selected.getRoute().getTrains().remove(selected);
-            int prevCount = route.getTrains().size();
             selected.setRoute(route);
             route.getTrains().add(selected);
-            // Auf Kreis-Routen fährt jeder 2. Zug in die Gegenrichtung
-            if (route.isCircular() && !route.getStops().isEmpty() && prevCount % 2 == 1) {
-                selected.setForward(false);
-                selected.setCurrentStopIndex(route.getStops().size() - 1);
-                selected.setPosition(0.0);
-            } else {
-                selected.setForward(true);
-                selected.setCurrentStopIndex(0);
-                selected.setPosition(0.0);
-            }
+            distributeTrainsOnRoute(route);
             trainListView.refresh();
             routeListView.refresh();
         });
@@ -1025,6 +1050,7 @@ public class GameController {
         for (Train t : trains) {
             if (t.getRoute() != null) t.getRoute().getTrains().add(t);
         }
+        for (Route r : world.getRoutes()) distributeTrainsOnRoute(r);
 
         economyDao.load(id, world.getEconomy(), world.getSatisfaction());
 
