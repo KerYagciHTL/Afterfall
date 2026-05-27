@@ -23,7 +23,7 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 *Routenplanung und Zugauslastung.*
 
 * ✅ **US 3.1 - Linien erstellen:** Als Spieler möchte ich eine neue Route (Linie) erstellen können, indem ich mehrere Stationen nacheinander auswähle. Die Route soll automatisch eine gut sichtbare Farbe erhalten.
-* ✅ **US 3.2 - Züge kaufen:** Als Spieler möchte ich aus drei verschiedenen Zugtypen (Standard, Mittel, Super) wählen und diese kaufen können, um auf unterschiedliche Passagiermengen reagieren zu können.
+* ✅ **US 3.2 - Züge kaufen:** Als Spieler möchte ich aus vier verschiedenen Zugtypen (Standard, Mittel, Super, Deluxe) wählen und diese kaufen können, um auf unterschiedliche Passagiermengen reagieren zu können.
 * ✅ **US 3.3 - Zugzuweisung & Automatik:** Als Spieler möchte ich meine Züge bestimmten Routen zuweisen. Die Züge sollen diese Routen anschließend automatisch abfahren.
 * ✅ **US 3.4 - Betriebskosten:** Als Spieler möchte ich sehen, dass der Betrieb einer Route laufende Kosten (abhängig von Zugtyp und Streckenlänge) verursacht, damit ich ineffiziente Linien optimieren muss.
 * ✅ **US 3.5 - Fahrplan-Verwaltung:** Als Spieler möchte ich Linien temporär deaktivieren können, um laufende Betriebskosten zu sparen, wenn ich im Minus bin.
@@ -53,7 +53,7 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 ## Epic 7: Online Ranking
 *Der kompetitive Langzeit-Faktor.*
 
-* **US 7.1 - Ranglisten-Integration:** Als Spieler möchte ich meinen Unternehmenswert (Net Worth) in einer globalen oder Freundes-Rangliste vergleichen können, um motiviert zu bleiben, mein Netz immer weiter zu optimieren. *(Backend ✅ – Frontend-Anzeige der Rangliste im Spiel ❌)*
+* ✅ **US 7.1 - Ranglisten-Integration:** Als Spieler möchte ich meinen Unternehmenswert (Net Worth) in einer globalen oder Freundes-Rangliste vergleichen können, um motiviert zu bleiben, mein Netz immer weiter zu optimieren. *(Backend ✅ – Rangliste in Lobby mit Top-100, Medaillen 🥇🥈🥉, Score-Submit beim Speichern ✅)*
 
 ---
 
@@ -62,7 +62,7 @@ Diese User Stories sind in logische Epics (Themenbereiche) unterteilt und so ges
 
 * ✅ **US 8.1 - Hauptmenü (Lobby):** Als Spieler möchte ich beim Start der Anwendung eine Lobby-Ansicht sehen, von der aus ich alle weiteren Aktionen (Laden, Neu starten, Rangliste) starten kann, damit das Spiel einen klaren Einstiegspunkt hat.
 
-  *(Lobby via `MainController` + `main.fxml` implementiert: Spielstand-Liste ✅, Neues Spiel ✅, Laden ✅, Zurück zum Menü-Button im Spiel ✅ – Ranglisten-Bereich in der Lobby ❌ noch offen)*
+  *(Lobby via `MainController` + `main.fxml` implementiert: Spielstand-Liste ✅, Neues Spiel ✅, Laden ✅, Zurück zum Menü-Button im Spiel ✅, Ranglisten-Bereich in der Lobby ✅)*
 
 * ✅ **US 8.2 - Spielstand löschen:** Als Spieler möchte ich in der Lobby einen gespeicherten Spielstand löschen können, damit die Liste übersichtlich bleibt.
 
