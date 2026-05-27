@@ -133,6 +133,9 @@ public class GameView extends Canvas {
                     Station nearest = movableIsFirst ? sA : sB;
                     Station other   = movableIsFirst ? sB : sA;
 
+                    if (dragDetected)
+                        snapTarget = findSnapStation(toWorldX(e.getX()), toWorldY(e.getY()), dragFixedStation);
+
                     if (dragDetected && snapTarget != null) {
                         lastClickConsumed = true;
                         if (routeSegmentRedirectCb != null)
