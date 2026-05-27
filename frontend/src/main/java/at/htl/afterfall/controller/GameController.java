@@ -451,6 +451,33 @@ public class GameController {
      * Verteilt alle Züge einer Route gleichmäßig auf zufällig versetzte Stops,
      * abwechselnd vor-/rückwärts, um Überlappungen zu vermeiden.
      */
+    private void spawnNewTrainOnRoute(Train newTrain, Route route) {
+        List<Station> stops = route.getStops();
+        if (stops.size() < 2) {
+            newTrain.setCurrentStopIndex(0);
+            newTrain.setPosition(0.0);
+            newTrain.setForward(true);
+            return;
+        }
+        List<Train> others = route.getTrains().stream().filter(t -> t != newTrain).toList();
+        int bestIdx = 0;
+        double bestMinDist = -1;
+        int S = stops.size();
+        for (int i = 0; i < S; i++) {
+            double minDist = others.isEmpty() ? Double.MAX_VALUE : Double.MAX_VALUE;
+            for (Train t : others) {
+                int diff = Math.abs(t.getCurrentStopIndex() - i);
+                double d = Math.min(diff, S - diff); // kürzester Weg im Ring
+                if (d < minDist) minDist = d;
+            }
+            if (minDist > bestMinDist) { bestMinDist = minDist; bestIdx = i; }
+        }
+        boolean fwd = !route.isCircular() && bestIdx == S - 1 ? false : true;
+        newTrain.setCurrentStopIndex(bestIdx);
+        newTrain.setPosition(0.0);
+        newTrain.setForward(fwd);
+    }
+
     private void distributeTrainsOnRoute(Route route) {
         List<Train> trains = route.getTrains();
         List<Station> stops = route.getStops();
@@ -941,7 +968,7 @@ public class GameController {
             if (selected.getRoute() != null) selected.getRoute().getTrains().remove(selected);
             selected.setRoute(route);
             route.getTrains().add(selected);
-            distributeTrainsOnRoute(route);
+            spawnNewTrainOnRoute(selected, route);
             trainListView.refresh();
             routeListView.refresh();
         });
