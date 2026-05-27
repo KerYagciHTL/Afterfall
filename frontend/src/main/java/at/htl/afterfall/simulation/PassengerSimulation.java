@@ -35,15 +35,12 @@ public class PassengerSimulation {
     private void spawnPassenger() {
         List<Station> stations = world.getStations();
         if (stations.size() < 2) return;
-        for (Station origin : stations) {
-            spawnFrom(origin, stations);
-        }
+        // Eine zufällige Station pro Tick → jede Station spawnt unabhängig in eigenem Rhythmus
+        Station origin = stations.get(rng.nextInt(stations.size()));
+        spawnFrom(origin, stations);
     }
 
-    private static final int MAX_WAITING_PER_STATION = 15;
-
     private void spawnFrom(Station origin, List<Station> allStations) {
-        if (origin.getWaitingPassengers().size() >= MAX_WAITING_PER_STATION) return;
 
         List<Station> reachable = new ArrayList<>();
         for (Route r : world.getRoutes()) {

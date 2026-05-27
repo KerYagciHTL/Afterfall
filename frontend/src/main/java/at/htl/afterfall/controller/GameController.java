@@ -459,20 +459,31 @@ public class GameController {
             newTrain.setForward(true);
             return;
         }
-        List<Train> others = route.getTrains().stream().filter(t -> t != newTrain).toList();
-        int bestIdx = 0;
-        double bestMinDist = -1;
         int S = stops.size();
-        for (int i = 0; i < S; i++) {
-            double minDist = others.isEmpty() ? Double.MAX_VALUE : Double.MAX_VALUE;
-            for (Train t : others) {
-                int diff = Math.abs(t.getCurrentStopIndex() - i);
-                double d = Math.min(diff, S - diff); // kürzester Weg im Ring
-                if (d < minDist) minDist = d;
+        List<Train> others = route.getTrains().stream()
+                .filter(t -> t != newTrain).toList();
+
+        int bestIdx;
+        if (others.isEmpty()) {
+            bestIdx = rng.nextInt(S);
+        } else {
+            bestIdx = 0;
+            double bestMinDist = -1;
+            for (int i = 0; i < S; i++) {
+                double minDist = Double.MAX_VALUE;
+                for (Train t : others) {
+                    int diff = Math.abs(t.getCurrentStopIndex() - i);
+                    double d = Math.min(diff, S - diff);
+                    if (d < minDist) minDist = d;
+                }
+                if (minDist > bestMinDist) {
+                    bestMinDist = minDist;
+                    bestIdx = i;
+                }
             }
-            if (minDist > bestMinDist) { bestMinDist = minDist; bestIdx = i; }
         }
-        boolean fwd = !route.isCircular() && bestIdx == S - 1 ? false : true;
+
+        boolean fwd = !(bestIdx == S - 1 && !route.isCircular());
         newTrain.setCurrentStopIndex(bestIdx);
         newTrain.setPosition(0.0);
         newTrain.setForward(fwd);
