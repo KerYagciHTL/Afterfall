@@ -1,12 +1,31 @@
 package at.htl.afterfall.persistence;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DatabaseManager {
-    private static final String DB_URL = "jdbc:sqlite:afterfall.db";
+    private static final String DB_URL = resolveDbUrl();
+
+    private static String resolveDbUrl() {
+        String os   = System.getProperty("os.name", "").toLowerCase();
+        String home = System.getProperty("user.home");
+        Path dir;
+        if (os.contains("mac")) {
+            dir = Path.of(home, "Library", "Application Support", "Afterfall");
+        } else if (os.contains("win")) {
+            String appData = System.getenv("APPDATA");
+            dir = Path.of(appData != null ? appData : home, "Afterfall");
+        } else {
+            dir = Path.of(home, ".local", "share", "Afterfall");
+        }
+        try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        return "jdbc:sqlite:" + dir.resolve("afterfall.db");
+    }
     private static Connection connection;
 
     public static Connection getConnection() throws SQLException {
