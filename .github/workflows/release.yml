@@ -70,11 +70,17 @@ jobs:
         working-directory: frontend/target/dist
         run: tar -czf Afterfall-${{ matrix.label }}.tar.gz Afterfall/
 
-      - name: Archive Windows/macOS (zip)
-        if: runner.os != 'Linux'
+      - name: Archive macOS (zip)
+        if: runner.os == 'macOS'
         shell: bash
         working-directory: frontend/target/dist
         run: zip -r Afterfall-${{ matrix.label }}.zip Afterfall*/
+
+      - name: Archive Windows (zip)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: frontend/target/dist
+        run: Compress-Archive -Path Afterfall -DestinationPath Afterfall-${{ matrix.label }}.zip
 
       - uses: actions/upload-artifact@v4
         with:
