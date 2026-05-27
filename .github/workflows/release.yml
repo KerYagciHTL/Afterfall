@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (z.B. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows-x64
+          - os: macos-latest
+            label: macOS-arm64
+          - os: ubuntu-latest
+            label: Linux-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Inject ranking config
+        shell: bash
+        env:
+          RANKING_URL: ${{ secrets.RANKING_URL }}
+          RANKING_TOKEN: ${{ secrets.RANKING_TOKEN }}
+        run: |
+          CFG=frontend/src/main/resources/at/htl/afterfall/config.properties
+          sed -i.bak "s|ranking\.url=.*|ranking.url=${RANKING_URL}|" "$CFG"
+          sed -i.bak "s|ranking\.token=.*|ranking.token=${RANKING_TOKEN}|" "$CFG"
+          rm -f "${CFG}.bak"
+
+      - name: Maven package
+        working-directory: frontend
+        shell: bash
+        run: mvn clean package -DskipTests -q
+
+      - name: jpackage
+        shell: bash
+        run: |
+          mkdir -p frontend/target/jpackage-input
+          cp frontend/target/afterfall-frontend-*-standalone.jar frontend/target/jpackage-input/
+          JAR=$(ls frontend/target/jpackage-input/afterfall-frontend-*-standalone.jar | head -1 | xargs basename)
+          jpackage \
+            --type app-image \
+            --name Afterfall \
+            --input frontend/target/jpackage-input \
+            --main-jar "$JAR" \
+            --main-class at.htl.afterfall.Launcher \
+            --dest frontend/target/dist
+
+      - name: Archive Linux (tar.gz)
+        if: runner.os == 'Linux'
+        working-directory: frontend/target/dist
+        run: tar -czf Afterfall-${{ matrix.label }}.tar.gz Afterfall/
+
+      - name: Archive macOS (zip)
+        if: runner.os == 'macOS'
+        shell: bash
+        working-directory: frontend/target/dist
+        run: |
+          codesign --deep --force --sign - Afterfall.app
+          zip -r Afterfall-${{ matrix.label }}.zip Afterfall.app
+
+      - name: Archive Windows (zip)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: frontend/target/dist
+        run: Compress-Archive -Path Afterfall -DestinationPath Afterfall-${{ matrix.label }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: |
+            frontend/target/dist/Afterfall-${{ matrix.label }}.zip
+            frontend/target/dist/Afterfall-${{ matrix.label }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Afterfall ${{ steps.tag.outputs.name }}
+          generate_release_notes: false
+          files: artifacts/**
+          body: |
+            ## Afterfall – U-Bahn Manager
+
+            ### Download
+            | Betriebssystem | Datei |
+            |---|---|
+            | 🪟 Windows 64-bit | `Afterfall-Windows-x64.zip` |
+            | 🍎 macOS Apple Silicon (M1/M2/M3) | `Afterfall-macOS-arm64.zip` |
+            | 🐧 Linux 64-bit | `Afterfall-Linux-x64.tar.gz` |
+
+            ### Starten
+            **Windows:** ZIP entpacken → `Afterfall\Afterfall.exe` doppelklicken
+
+            **macOS:** ZIP entpacken → `Afterfall.app` öffnen
+            > Beim ersten Start: Rechtsklick → Öffnen (Gatekeeper umgehen)
+
+            **Linux:**
+            ```bash
+            tar -xzf Afterfall-Linux-x64.tar.gz
+            ./Afterfall/bin/Afterfall
+            ```

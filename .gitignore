@@ -33,7 +33,25 @@ replay_pid*
 local.properties
 *.local
 
+## SQLite-Datenbanken (lokale Spielstände / Ranking-DB)
+*.db
+*.db-shm
+*.db-wal
+
+## Lokale Laufzeit-Dateien (Spielername, Token)
+ranking.properties
+frontend/ranking.properties
+
+## Maven Shade Plugin Artefakt
+dependency-reduced-pom.xml
+
+## Lokale Build-Skripte
+build-native.sh
+build-linux.sh
+
+## Backend .env mit echtem RANKING_TOKEN
+backend/.env
+
 ## Projekt-/Assistenten-Dateien, die lokal bleiben sollen
 CLAUDE.md
-
 
