@@ -11,7 +11,7 @@ import java.sql.Statement;
 public class DatabaseManager {
     private static final String DB_URL = resolveDbUrl();
 
-    private static String resolveDbUrl() {
+    public static Path getDataDir() {
         String os   = System.getProperty("os.name", "").toLowerCase();
         String home = System.getProperty("user.home");
         Path dir;
@@ -24,7 +24,11 @@ public class DatabaseManager {
             dir = Path.of(home, ".local", "share", "Afterfall");
         }
         try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        return "jdbc:sqlite:" + dir.resolve("afterfall.db");
+        return dir;
+    }
+
+    private static String resolveDbUrl() {
+        return "jdbc:sqlite:" + getDataDir().resolve("afterfall.db");
     }
     private static Connection connection;
 

@@ -3,8 +3,6 @@ package at.htl.afterfall;
 import at.htl.afterfall.model.TrainType;
 import org.json.JSONObject;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -68,11 +66,10 @@ public class GameConfig {
     // ── Loader ────────────────────────────────────────────────────────────────
 
     private static GameConfig load() {
-        try {
-            Path p = Path.of("config.json");
-            if (Files.exists(p)) {
-                JSONObject cfg = new JSONObject(Files.readString(p));
-                System.out.println("[GameConfig] Geladen: " + p.toAbsolutePath());
+        try (var in = GameConfig.class.getResourceAsStream("/at/htl/afterfall/config.json")) {
+            if (in != null) {
+                JSONObject cfg = new JSONObject(new String(in.readAllBytes()));
+                System.out.println("[GameConfig] Geladen aus JAR-Ressource.");
                 return new GameConfig(cfg);
             }
         } catch (Exception e) {
