@@ -1,5 +1,6 @@
 package at.htl.afterfall.util;
 
+import at.htl.afterfall.persistence.DatabaseManager;
 import javafx.application.Platform;
 import javafx.scene.control.TextInputDialog;
 
@@ -28,7 +29,7 @@ public class RankingClient {
             TOKEN    = props.getProperty("ranking.token", "");
         } catch (Exception e) { throw new RuntimeException(e); }
 
-        PLAYER_NAME_FILE = Path.of("ranking.properties");
+        PLAYER_NAME_FILE = DatabaseManager.getDataDir().resolve("ranking.properties");
     }
 
     private static String loadPlayerName() {
