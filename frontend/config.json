@@ -8,13 +8,13 @@
     "trackNetWorthGain":    1600
   },
   "trains": {
-    "STANDARD": { "capacity":  50, "speedFactor": 1.0, "buyCost":   50000, "opCostPerKm": 0.50 },
-    "MEDIUM":   { "capacity": 120, "speedFactor": 1.0, "buyCost":  300000, "opCostPerKm": 1.00 },
-    "SUPER":    { "capacity": 300, "speedFactor": 1.3, "buyCost": 1000000, "opCostPerKm": 2.00 },
-    "DELUXE":   { "capacity": 600, "speedFactor": 1.5, "buyCost": 6000000, "opCostPerKm": 3.50 }
+    "STANDARD": { "capacity":  50, "speedFactor": 1.0, "buyCost":   75000, "opCostPerKm": 0.50 },
+    "MEDIUM":   { "capacity": 120, "speedFactor": 1.0, "buyCost":  500000, "opCostPerKm": 1.00 },
+    "SUPER":    { "capacity": 300, "speedFactor": 1.3, "buyCost": 1500000, "opCostPerKm": 2.00 },
+    "DELUXE":   { "capacity": 600, "speedFactor": 1.5, "buyCost": 8000000, "opCostPerKm": 3.50 }
   },
   "passenger": {
-    "baseSpawnInterval":  2,
+    "baseSpawnInterval":  2.5,
     "farePerPx":          0.10,
     "minFare":           5.0,
     "trainBaseSpeed":    80.0,
@@ -23,8 +23,8 @@
   },
   "cityGrowth": {
     "initialDelay":    60.0,
-    "minInterval":     50.0,
-    "maxInterval":    120.0,
+    "minInterval":     150,
+    "maxInterval":    250,
     "minStationDist":  90.0,
     "spawnRadiusMin": 160.0,
     "spawnRadiusMax": 480.0
