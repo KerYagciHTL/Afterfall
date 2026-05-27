@@ -72,7 +72,9 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         working-directory: frontend/target/dist
-        run: zip -r Afterfall-${{ matrix.label }}.zip Afterfall*/
+        run: |
+          codesign --deep --force --sign - Afterfall.app
+          zip -r Afterfall-${{ matrix.label }}.zip Afterfall.app
 
       - name: Archive Windows (zip)
         if: runner.os == 'Windows'
