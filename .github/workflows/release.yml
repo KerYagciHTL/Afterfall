@@ -20,8 +20,6 @@ jobs:
             label: Windows-x64
           - os: macos-latest
             label: macOS-arm64
-          - os: macos-13
-            label: macOS-x64
           - os: ubuntu-latest
             label: Linux-x64
 
@@ -126,7 +124,6 @@ jobs:
             |---|---|
             | 🪟 Windows 64-bit | `Afterfall-Windows-x64.zip` |
             | 🍎 macOS Apple Silicon (M1/M2/M3) | `Afterfall-macOS-arm64.zip` |
-            | 🍎 macOS Intel | `Afterfall-macOS-x64.zip` |
             | 🐧 Linux 64-bit | `Afterfall-Linux-x64.tar.gz` |
 
             ### Starten
