@@ -340,14 +340,12 @@ public class GameController {
                     world.getPassengers().removeAll(station.getWaitingPassengers());
                     station.getWaitingPassengers().clear();
 
-                    // Station aus allen Routen entfernen, Züge resetten
+                    // Station aus allen Routen entfernen, Zug-Indizes anpassen
                     for (Route route : world.getRoutes()) {
-                        if (route.getStops().remove(station)) {
-                            for (Train t : route.getTrains()) {
-                                t.setCurrentStopIndex(0);
-                                t.setPosition(0.0);
-                                t.setForward(true);
-                            }
+                        int removeIdx = route.getStops().indexOf(station);
+                        if (removeIdx >= 0) {
+                            route.getStops().remove(station);
+                            adjustTrainsAfterStopRemove(route, removeIdx);
                         }
                     }
 
@@ -384,12 +382,9 @@ public class GameController {
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
                 .ifPresent(r -> {
+                    int removeIdx = route.getStops().indexOf(nearest);
                     route.getStops().remove(nearest);
-                    for (Train t : route.getTrains()) {
-                        t.setCurrentStopIndex(0);
-                        t.setPosition(0.0);
-                        t.setForward(true);
-                    }
+                    adjustTrainsAfterStopRemove(route, removeIdx);
                     routeListView.refresh();
                     gameView.render();
                     showToast("Verbindung getrennt.", false);
@@ -422,12 +417,8 @@ public class GameController {
         // Station zwischen stopA und stopB einfügen (beide bleiben erhalten)
         stops.add(insertAfterIndex + 1, newStation);
 
-        // Züge zurücksetzen
-        for (Train t : route.getTrains()) {
-            t.setCurrentStopIndex(0);
-            t.setPosition(0.0);
-            t.setForward(true);
-        }
+        // Zug-Indizes anpassen – kein Respawn
+        adjustTrainsAfterStopInsert(route, insertAfterIndex + 1);
 
         routeListView.refresh();
         gameView.render();
@@ -1126,5 +1117,33 @@ public class GameController {
         dlg.setTitle(title);
         dlg.setHeaderText(header);
         return dlg.showAndWait().orElse(null);
+    }
+
+    // ─── Zug-Index-Anpassung bei Route-Änderungen ────────────────────────────
+
+    private void adjustTrainsAfterStopInsert(Route route, int insertedIdx) {
+        for (Train t : route.getTrains()) {
+            if (t.getCurrentStopIndex() >= insertedIdx) {
+                t.setCurrentStopIndex(t.getCurrentStopIndex() + 1);
+            }
+        }
+    }
+
+    private void adjustTrainsAfterStopRemove(Route route, int removedIdx) {
+        List<Station> stops = route.getStops(); // bereits ohne den entfernten Stop
+        if (stops.size() < 2) return;           // moveTrains() überspringt diese Route ohnehin
+        for (Train t : route.getTrains()) {
+            int idx = t.getCurrentStopIndex();
+            if (idx == removedIdx) {
+                t.setCurrentStopIndex(Math.max(0, removedIdx - 1));
+                t.setPosition(0.0);
+            } else if (idx > removedIdx) {
+                t.setCurrentStopIndex(idx - 1);
+            }
+            if (t.getCurrentStopIndex() >= stops.size()) {
+                t.setCurrentStopIndex(stops.size() - 1);
+                t.setPosition(0.0);
+            }
+        }
     }
 }
