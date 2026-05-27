@@ -108,6 +108,15 @@ public class GameController {
         gameView.setTrackDemolishCb(this::handleTrackDemolish);
         gameView.setRouteSegmentRedirectCb(this::handleRouteSegmentRedirect);
         gameView.setRouteSegmentClickCb(this::handleRouteSegmentClick);
+        gameView.setDragBlockedCb(() -> {
+            String mode = switch (buildMode) {
+                case BUILD_STATION -> "Station-Modus";
+                case BUILD_TRACK   -> "Strecken-Modus";
+                case BUILD_ROUTE   -> "Routen-Modus";
+                default            -> "Baumodus";
+            };
+            showToast(mode + " aktiv – ESC drücken, dann Route verschieben.", true);
+        });
 
         // --- HUD Bindings mit Währungsformatierung ---
         balanceLabel.textProperty().bind(Bindings.createStringBinding(

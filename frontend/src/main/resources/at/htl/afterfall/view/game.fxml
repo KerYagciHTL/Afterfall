@@ -57,7 +57,7 @@
                           styleClass="toggle-build"/>
             <ToggleButton fx:id="buildTrackBtn"   text="⟼  Strecke" onAction="#onBuildTrack"
                           styleClass="toggle-build"/>
-            <Button text="＋  Route"      onAction="#onNewRoute"  styleClass="btn-primary"/>
+            <Button text="＋  Route"      onAction="#onNewRoute"  styleClass="toggle-build"/>
             <Button text="🚇  Zug kaufen" onAction="#onBuyTrain"  styleClass="btn-success"/>
 
         </HBox>

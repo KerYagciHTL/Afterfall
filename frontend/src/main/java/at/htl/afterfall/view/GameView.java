@@ -72,6 +72,7 @@ public class GameView extends Canvas {
     private Consumer<Track>              trackDemolishCb;
     private RouteSegmentRedirectCallback routeSegmentRedirectCb;
     private RouteSegmentClickCallback    routeSegmentClickCb;
+    private Runnable                     dragBlockedCb;
 
     // ─── Constructor ──────────────────────────────────────────────────────────
 
@@ -82,6 +83,10 @@ public class GameView extends Canvas {
             if (e.isSecondaryButtonDown()) {
                 dragStartX = e.getX(); dragStartY = e.getY();
                 camStartX  = camX;    camStartY  = camY;
+            } else if (e.getButton() == MouseButton.PRIMARY && !trackInteractionEnabled) {
+                double wx = toWorldX(e.getX()), wy = toWorldY(e.getY());
+                if (findRouteSegmentAt(wx, wy) != null && dragBlockedCb != null)
+                    dragBlockedCb.run();
             } else if (e.getButton() == MouseButton.PRIMARY && trackInteractionEnabled) {
                 pressSX        = e.getX();
                 pressSY        = e.getY();
@@ -564,6 +569,7 @@ public class GameView extends Canvas {
     }
 
     public void setTrackInteractionEnabled(boolean b)                       { trackInteractionEnabled  = b; }
+    public void setDragBlockedCb(Runnable cb)                               { dragBlockedCb            = cb; }
     public void setTrackDemolishCb(Consumer<Track> cb)                      { trackDemolishCb          = cb; }
     public void setRouteSegmentRedirectCb(RouteSegmentRedirectCallback cb)  { routeSegmentRedirectCb   = cb; }
     public void setRouteSegmentClickCb(RouteSegmentClickCallback cb)        { routeSegmentClickCb      = cb; }
