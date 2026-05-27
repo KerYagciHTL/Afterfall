@@ -5,6 +5,8 @@ import at.htl.afterfall.model.SaveGame;
 import at.htl.afterfall.persistence.DatabaseManager;
 import at.htl.afterfall.persistence.SaveGameDao;
 import at.htl.afterfall.util.RankingClient;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -15,6 +17,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -32,6 +35,7 @@ public class MainController {
 
     private final SaveGameDao saveGameDao = new SaveGameDao();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    private Timeline rankingRefreshTimer;
 
     @FXML
     public void initialize() {
@@ -96,8 +100,6 @@ public class MainController {
     }
 
     private void loadRanking() {
-        rankingStatusLabel.setText("Lade Rangliste...");
-
         Label rankPlaceholder = new Label("Noch keine Einträge vorhanden.");
         rankPlaceholder.setStyle("-fx-text-fill: #37474f; -fx-font-size: 12;");
         rankingListView.setPlaceholder(rankPlaceholder);
@@ -145,6 +147,14 @@ public class MainController {
             }
         });
 
+        fetchRanking();
+
+        rankingRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(2), e -> fetchRanking()));
+        rankingRefreshTimer.setCycleCount(Timeline.INDEFINITE);
+        rankingRefreshTimer.play();
+    }
+
+    private void fetchRanking() {
         CompletableFuture.supplyAsync(RankingClient::fetchRanking)
             .thenAcceptAsync(entries -> Platform.runLater(() -> {
                 if (entries == null) {
@@ -207,6 +217,7 @@ public class MainController {
     }
 
     private void openGame(SaveGame save, boolean isNewGame) {
+        if (rankingRefreshTimer != null) rankingRefreshTimer.stop();
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/game.fxml"));
             loader.load();
