@@ -63,7 +63,7 @@ public class RankingController {
                 INSERT INTO players (player_name, net_worth, last_updated)
                 VALUES (?, ?, datetime('now'))
                 ON CONFLICT(player_name) DO UPDATE SET
-                    net_worth    = excluded.net_worth,
+                    net_worth    = MAX(excluded.net_worth, players.net_worth),
                     last_updated = datetime('now')
                 """, playerName, netWorth);
 
