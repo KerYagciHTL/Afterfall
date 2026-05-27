@@ -96,9 +96,10 @@ public class GameConfig {
         trackNetWorthGain   = d(eco, "trackNetWorthGain",    1_600);
 
         trainSpecs = new EnumMap<>(TrainType.class);
-        trainSpecs.put(TrainType.STANDARD, spec(tr, "STANDARD",  50,  1.0,  20_000, 0.40));
-        trainSpecs.put(TrainType.MEDIUM,   spec(tr, "MEDIUM",   120,  1.0,  48_000, 0.80));
-        trainSpecs.put(TrainType.SUPER,    spec(tr, "SUPER",    300,  1.3, 120_000, 1.60));
+        trainSpecs.put(TrainType.STANDARD, spec(tr, "STANDARD",  50,  1.0,   20_000, 0.40));
+        trainSpecs.put(TrainType.MEDIUM,   spec(tr, "MEDIUM",   120,  1.0,   48_000, 0.80));
+        trainSpecs.put(TrainType.SUPER,    spec(tr, "SUPER",    300,  1.3,  120_000, 1.60));
+        trainSpecs.put(TrainType.DELUXE,   spec(tr, "DELUXE",   600,  1.5, 6_000_000, 3.50));
 
         baseSpawnInterval  = d(pass, "baseSpawnInterval",  0.667);
         farePerPx          = d(pass, "farePerPx",           0.15);
