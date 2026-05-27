@@ -8,14 +8,14 @@
     "trackNetWorthGain":    1600
   },
   "trains": {
-    "STANDARD": { "capacity":  50, "speedFactor": 1.0, "buyCost":  20000, "opCostPerKm": 0.40 },
-    "MEDIUM":   { "capacity": 120, "speedFactor": 1.0, "buyCost":  48000, "opCostPerKm": 0.80 },
-    "SUPER":    { "capacity": 300, "speedFactor": 1.3, "buyCost": 120000, "opCostPerKm": 1.60 }
+    "STANDARD": { "capacity":  50, "speedFactor": 1.0, "buyCost":  50000, "opCostPerKm": 0.50 },
+    "MEDIUM":   { "capacity": 120, "speedFactor": 1.0, "buyCost":  180000, "opCostPerKm": 1.00 },
+    "SUPER":    { "capacity": 300, "speedFactor": 1.3, "buyCost": 670000, "opCostPerKm": 2.00 }
   },
   "passenger": {
-    "baseSpawnInterval":  0.667,
-    "farePerPx":          0.15,
-    "minFare":           10.0,
+    "baseSpawnInterval":  1,
+    "farePerPx":          0.10,
+    "minFare":           5.0,
     "trainBaseSpeed":    80.0,
     "spawnChanceDivisor": 250.0,
     "minSatModifier":     0.5
@@ -30,7 +30,7 @@
   },
   "satisfaction": {
     "initial":         50.0,
-    "maxWait":      45000.0,
+    "maxWait":      30000.0,
     "updateInterval":   0.5,
     "baseTarget":      55.0,
     "connWeight":      25.0,
@@ -38,6 +38,6 @@
     "waitPenalty":     25.0,
     "emptyPenalty":    10.0,
     "riseRate":         0.025,
-    "fallRate":         0.008
+    "fallRate":         0.015
   }
 }
