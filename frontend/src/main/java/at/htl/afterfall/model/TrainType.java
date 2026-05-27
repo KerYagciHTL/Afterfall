@@ -3,7 +3,7 @@ package at.htl.afterfall.model;
 import at.htl.afterfall.GameConfig;
 
 public enum TrainType {
-    STANDARD, MEDIUM, SUPER;
+    STANDARD, MEDIUM, SUPER, DELUXE;
 
     public int    capacity()    { return GameConfig.get().trainSpec(this).capacity(); }
     public double speedFactor() { return GameConfig.get().trainSpec(this).speedFactor(); }
