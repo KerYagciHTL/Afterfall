@@ -1129,11 +1129,10 @@ public class GameController {
 
     // ─── Speichern ───────────────────────────────────────────────────────────
 
-    private void saveGame() {
+    private void saveGameToDB() {
         if (world.getCurrentSave() == null) return;
         int id = world.getCurrentSave().getId();
 
-        // Vollständiges Neuschreiben: löschen in Abhängigkeitsreihenfolge, dann re-insert
         trainDao.deleteAllBySaveId(id);
         routeDao.deleteAllBySaveId(id);
         trackDao.deleteAllBySaveId(id);
@@ -1145,12 +1144,17 @@ public class GameController {
         for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
 
         economyDao.save(id, world.getEconomy(), world.getSatisfaction());
+        saveGameDao.updateLastSaved(id);
+    }
+
+    private void saveGame() {
+        if (world.getCurrentSave() == null) return;
+        saveGameToDB();
         RankingClient.submitScore(
             world.getEconomy().getNetWorth(),
             rank -> showToast("Rang #" + rank + " in der Rangliste! 🏆", false),
             () -> showToast("Rangliste nicht erreichbar – Score nicht übermittelt.", true)
         );
-        saveGameDao.updateLastSaved(id);
         showToast("Spielstand gespeichert.", false);
     }
 
@@ -1158,8 +1162,17 @@ public class GameController {
 
     @FXML
     public void onMainMenu() {
-        saveGame();
         gameLoop.stop();
+        saveGameToDB();
+        double netWorth = world.getEconomy().getNetWorth();
+        RankingClient.submitScore(
+            netWorth,
+            rank -> navigateToMenu(),
+            ()   -> navigateToMenu()
+        );
+    }
+
+    private void navigateToMenu() {
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/main.fxml"));
             Scene menuScene = new Scene(loader.load(), 900, 700);
