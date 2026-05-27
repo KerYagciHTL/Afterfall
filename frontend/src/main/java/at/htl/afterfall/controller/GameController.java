@@ -1,5 +1,6 @@
 package at.htl.afterfall.controller;
 
+import at.htl.afterfall.GameConfig;
 import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.*;
 import at.htl.afterfall.persistence.*;
@@ -75,9 +76,10 @@ public class GameController {
     private TutorialOverlay tutorialOverlay;
     private Timeline        tutorialTimer;
 
-    private static final double TRACK_BUILD_COST    = 2_000;
-    private static final double TRACK_NET_WORTH_GAIN = 1_600;
-    private static final double STATION_BUILD_COST   = 8_000;
+    private static double TRACK_BUILD_COST()      { return GameConfig.get().trackBuildCost; }
+    private static double TRACK_NET_WORTH_GAIN() { return GameConfig.get().trackNetWorthGain; }
+    private static double STATION_BUILD_COST()   { return GameConfig.get().stationBuildCost; }
+    private static double STATION_NET_WORTH_GAIN(){ return GameConfig.get().stationNetWorthGain; }
 
     private final SaveGameDao saveGameDao = new SaveGameDao();
     private final StationDao stationDao = new StationDao();
@@ -223,7 +225,7 @@ public class GameController {
                 box.setStyle("-fx-background-color: transparent;");
 
                 Label typeLabel = new Label(icon + "  " + t.getType().name()
-                        + "  –  " + t.getType().capacity + " Pl.");
+                        + "  –  " + t.getType().capacity() + " Pl.");
                 typeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13; -fx-font-weight: bold;");
 
                 boolean hasRoute = t.getRoute() != null;
@@ -274,9 +276,13 @@ public class GameController {
         });
 
         gameLoop = new GameLoop(world, gameView);
-        gameLoop.setOnNewStation(s ->
-            showToast("Neuer Stadtteil: " + s.getName() + " fordert Anbindung!", true)
-        );
+        gameLoop.setOnNewStation(s -> {
+            if (world.getCurrentSave() != null) {
+                int dbId = stationDao.insert(world.getCurrentSave().getId(), s);
+                s.setId(dbId);
+            }
+            showToast("Neuer Stadtteil: " + s.getName() + " fordert Anbindung!", true);
+        });
         gameLoop.start();
 
         // Initial satisfaction color
@@ -297,13 +303,13 @@ public class GameController {
         confirm.setContentText(
                 "Strecke " + track.getFrom().getName() + " ↔ " + track.getTo().getName() +
                         " abreißen?\n\nKein Geld wird erstattet.\n" +
-                        "Unternehmenswert sinkt um " + formatCurrency(TRACK_BUILD_COST) + "."
+                        "Unternehmenswert sinkt um " + formatCurrency(TRACK_BUILD_COST()) + "."
         );
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
                 .ifPresent(r -> {
                     world.getTracks().remove(track);
-                    world.getEconomy().addNetWorth(-TRACK_BUILD_COST);
+                    world.getEconomy().addNetWorth(-TRACK_BUILD_COST());
                     if (world.getCurrentSave() != null) trackDao.delete(track.getId());
                     showToast("Strecke abgerissen.", false);
                     gameView.render();
@@ -322,7 +328,7 @@ public class GameController {
         confirm.setHeaderText("Station \"" + station.getName() + "\" abreißen?");
         confirm.setContentText(
                 "Kein Geld wird erstattet.\n" +
-                "Unternehmenswert sinkt um " + formatCurrency(STATION_BUILD_COST) + "." + extra
+                "Unternehmenswert sinkt um " + formatCurrency(STATION_BUILD_COST()) + "." + extra
         );
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
@@ -352,7 +358,7 @@ public class GameController {
                     }
 
                     world.getStations().remove(station);
-                    world.getEconomy().addNetWorth(-STATION_BUILD_COST);
+                    world.getEconomy().addNetWorth(-STATION_BUILD_COST());
                     if (world.getCurrentSave() != null) stationDao.delete(station.getId());
 
                     routeListView.refresh();
@@ -400,23 +406,15 @@ public class GameController {
         }
 
         // Strecken bauen falls nötig: stopA↔new UND stopB↔new
-        boolean builtAny = false;
-        if (!hasTrackBetween(stopA, newStation)) {
-            if (world.getEconomy().getBalance() < 0) {
-                showToast("Im Minus kann keine neue Strecke gebaut werden.", true);
-                return;
-            }
-            buildTrackSilent(stopA, newStation);
-            builtAny = true;
+        boolean needA = !hasTrackBetween(stopA, newStation);
+        boolean needB = !hasTrackBetween(stopB, newStation);
+        if ((needA || needB) && world.getEconomy().getBalance() < 0) {
+            showToast("Im Minus kann keine neue Strecke gebaut werden.", true);
+            return;
         }
-        if (!hasTrackBetween(stopB, newStation)) {
-            if (world.getEconomy().getBalance() < 0) {
-                showToast("Im Minus kann keine neue Strecke gebaut werden.", true);
-                return;
-            }
-            buildTrackSilent(stopB, newStation);
-            builtAny = true;
-        }
+        boolean builtAny = needA || needB;
+        if (needA) buildTrackSilent(stopA, newStation);
+        if (needB) buildTrackSilent(stopB, newStation);
 
         // Station zwischen stopA und stopB einfügen (beide bleiben erhalten)
         stops.add(insertAfterIndex + 1, newStation);
@@ -447,8 +445,8 @@ public class GameController {
     private void buildTrackSilent(Station from, Station to) {
         Track t = new Track(world.nextTrackId(), from, to);
         world.getTracks().add(t);
-        world.getEconomy().addBalance(-TRACK_BUILD_COST);
-        world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN);
+        world.getEconomy().addBalance(-TRACK_BUILD_COST());
+        world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
         if (world.getCurrentSave() != null) {
             int dbId = trackDao.insert(world.getCurrentSave().getId(), t);
             t.setId(dbId);
@@ -558,12 +556,12 @@ public class GameController {
         iconLbl.setStyle("-fx-font-size: 44;");
         Label nameLbl = new Label(type.name());
         nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 17; -fx-font-weight: bold;");
-        Label capLbl = new Label(type.capacity + " Plätze");
+        Label capLbl = new Label(type.capacity() + " Plätze");
         capLbl.setStyle("-fx-text-fill: #90a4ae; -fx-font-size: 13;");
-        Label priceLbl = new Label(formatCurrency(type.buyCost));
+        Label priceLbl = new Label(formatCurrency(type.buyCost()));
         priceLbl.setStyle("-fx-text-fill: #4fc3f7; -fx-font-size: 15; -fx-font-weight: bold;");
 
-        boolean canAfford = world.getEconomy().getBalance() >= type.buyCost;
+        boolean canAfford = world.getEconomy().getBalance() >= type.buyCost();
         Button buyBtn = new Button(canAfford ? "Kaufen" : "Kein Guthaben");
         buyBtn.setMaxWidth(Double.MAX_VALUE);
         buyBtn.setDisable(!canAfford);
@@ -576,7 +574,7 @@ public class GameController {
             closeTrainShop();
             Train train = new Train(world.nextTrainId(), type);
             world.getTrains().add(train);
-            world.getEconomy().addBalance(-type.buyCost);
+            world.getEconomy().addBalance(-type.buyCost());
             showToast(type.name() + " gekauft! Im Züge-Tab Route zuweisen.", false);
         });
 
@@ -706,8 +704,8 @@ public class GameController {
         if (name == null || name.isBlank()) return;
         Station s = new Station(world.nextStationId(), name, wx, wy);
         world.getStations().add(s);
-        world.getEconomy().addBalance(-8_000);
-        world.getEconomy().addNetWorth(6_000);
+        world.getEconomy().addBalance(-STATION_BUILD_COST());
+        world.getEconomy().addNetWorth(STATION_NET_WORTH_GAIN());
         if (world.getCurrentSave() != null) {
             int dbId = stationDao.insert(world.getCurrentSave().getId(), s);
             s.setId(dbId);
@@ -737,8 +735,8 @@ public class GameController {
         }
         Track t = new Track(world.nextTrackId(), from, to);
         world.getTracks().add(t);
-        world.getEconomy().addBalance(-TRACK_BUILD_COST);
-        world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN);
+        world.getEconomy().addBalance(-TRACK_BUILD_COST());
+        world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
         if (world.getCurrentSave() != null) {
             int dbId = trackDao.insert(world.getCurrentSave().getId(), t);
             t.setId(dbId);
@@ -836,6 +834,7 @@ public class GameController {
         Color color = colorGen.generateRouteColor();
         Route route = new Route(world.nextRouteId(), color);
         world.getRoutes().add(route);
+        route.setName("Linie " + world.getRoutes().size());
         activeRoute = route;
         setBuildMode(BuildMode.BUILD_ROUTE);
         buildStationBtn.setSelected(false);
@@ -858,6 +857,26 @@ public class GameController {
         buildTrackBtn.setSelected(false);
         setStatus("Bearbeite: " + selected + "  |  ESC = Fertig.");
         gameView.setActiveRouteHighlight(selected);
+    }
+
+    @FXML
+    public void onRenameRoute() {
+        Route selected = routeListView.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showToast("Bitte zuerst eine Route auswählen.", true);
+            return;
+        }
+        TextInputDialog dlg = new TextInputDialog(selected.getName());
+        dlg.setTitle("Route umbenennen");
+        dlg.setHeaderText("Neuer Name:");
+        dlg.showAndWait().ifPresent(name -> {
+            if (!name.isBlank()) {
+                selected.setName(name.strip());
+                if (world.getCurrentSave() != null)
+                    routeDao.updateName(selected.getId(), name.strip());
+                routeListView.refresh();
+            }
+        });
     }
 
     @FXML
@@ -933,7 +952,7 @@ public class GameController {
             selected.setRoute(null);
         }
         world.getTrains().remove(selected);
-        double refund = selected.getType().buyCost * 0.5;
+        double refund = selected.getType().buyCost() * 0.5;
         world.getEconomy().addBalance(refund);
         if (world.getCurrentSave() != null) trainDao.delete(selected.getId());
         showToast("Zug verkauft. Rückgabe: " + formatCurrency(refund), false);
@@ -1042,7 +1061,7 @@ public class GameController {
         RankingClient.submitScore(
             world.getEconomy().getNetWorth(),
             rank -> showToast("Rang #" + rank + " in der Rangliste! 🏆", false),
-            () -> {}
+            () -> showToast("Rangliste nicht erreichbar – Score nicht übermittelt.", true)
         );
         saveGameDao.updateLastSaved(id);
         showToast("Spielstand gespeichert.", false);

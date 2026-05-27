@@ -1,11 +1,9 @@
 package at.htl.afterfall.simulation;
 
+import at.htl.afterfall.GameConfig;
 import at.htl.afterfall.model.*;
 
 public class SatisfactionEngine {
-    private static final double MAX_WAIT = 45_000.0; // 45s bis max Wartestrafe
-    private static final double INTERVAL = 0.5;
-
     private final GameWorld world;
     private double timer = 0;
 
@@ -15,7 +13,8 @@ public class SatisfactionEngine {
 
     public void tick(double delta) {
         timer += delta;
-        if (timer < INTERVAL) return;
+        GameConfig cfg = GameConfig.get();
+        if (timer < cfg.satUpdateInterval) return;
         double accum = timer;
         timer = 0;
 
@@ -23,14 +22,11 @@ public class SatisfactionEngine {
 
         int total = world.getStations().size();
         int connected = 0;
-        int demandingUnmet = 0;
         for (Station s : world.getStations()) {
             boolean conn = isConnected(s);
             if (conn) {
                 connected++;
                 if (s.isDemandingConnection()) s.setDemandingConnection(false);
-            } else if (s.isDemandingConnection()) {
-                demandingUnmet++;
             }
         }
         double connFactor = total > 0 ? (double) connected / total : 0;
@@ -44,7 +40,7 @@ public class SatisfactionEngine {
             avgWait = (double) sum / passengers.size();
             totalWaiting = passengers.size();
         }
-        double waitFactor = Math.min(avgWait / MAX_WAIT, 1.0);
+        double waitFactor = Math.min(avgWait / cfg.satMaxWait, 1.0);
 
         int totalOnboard = 0;
         for (Train t : world.getTrains()) totalOnboard += t.getOnboardCount();
@@ -59,10 +55,14 @@ public class SatisfactionEngine {
         }
         double emptyFactor = totalRoutes > 0 ? (double) empty / totalRoutes : 0;
 
-        double target = 55 + 25 * connFactor + 20 * deliveryBonus - 25 * waitFactor - 10 * emptyFactor;
+        double target  = cfg.satBaseTarget
+                       + cfg.satConnWeight     * connFactor
+                       + cfg.satDeliveryWeight * deliveryBonus
+                       - cfg.satWaitPenalty    * waitFactor
+                       - cfg.satEmptyPenalty   * emptyFactor;
         double current = sat.getValue();
-        double diff = target - current;
-        double rate = diff > 0 ? 0.025 : 0.008;
+        double diff    = target - current;
+        double rate    = diff > 0 ? cfg.satRiseRate : cfg.satFallRate;
         sat.setValue(current + diff * rate * accum);
     }
 

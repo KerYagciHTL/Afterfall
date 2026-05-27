@@ -16,7 +16,7 @@ public class EconomyEngine {
         for (Train train : world.getTrains()) {
             if (!train.isActive() || train.getRoute() == null || !train.getRoute().isActive()) continue;
             double km = routeLengthKm(train.getRoute());
-            costs += train.getType().opCostPerKm * km * delta;
+            costs += train.getType().opCostPerKm() * km * delta;
         }
         eco.addBalance(-costs);
         eco.addNetWorth(-costs);

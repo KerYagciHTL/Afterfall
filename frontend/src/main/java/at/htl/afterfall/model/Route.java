@@ -8,6 +8,7 @@ import javafx.scene.paint.Color;
 
 public class Route {
     private int   id;
+    private String name;
     private Color color;
     private final ObservableList<Station> stops  = FXCollections.observableArrayList();
     private final ObservableList<Train>   trains = FXCollections.observableArrayList();
@@ -17,10 +18,13 @@ public class Route {
     public Route(int id, Color color) {
         this.id    = id;
         this.color = color;
+        this.name  = "";
     }
 
     public int   getId()    { return id; }
     public void  setId(int id) { this.id = id; }
+    public String getName() { return name; }
+    public void   setName(String n) { this.name = n != null ? n : ""; }
     public Color getColor() { return color; }
     public void  setColor(Color c) { this.color = c; }
 
@@ -43,6 +47,7 @@ public class Route {
 
     @Override
     public String toString() {
-        return "Linie " + id + " (" + stops.size() + " St.)";
+        String display = (name != null && !name.isBlank()) ? name : ("Linie " + id);
+        return display + " (" + stops.size() + " St.)";
     }
 }

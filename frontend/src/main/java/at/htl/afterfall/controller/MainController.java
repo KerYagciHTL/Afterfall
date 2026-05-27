@@ -11,10 +11,9 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -37,7 +36,6 @@ public class MainController {
     @FXML
     public void initialize() {
         DatabaseManager.initSchema();
-        refreshList();
 
         loadBtn.disableProperty().bind(
             saveListView.getSelectionModel().selectedItemProperty().isNull()
@@ -52,21 +50,33 @@ public class MainController {
                 super.updateItem(sg, empty);
                 if (empty || sg == null) {
                     setGraphic(null);
-                    setStyle("");
+                    setText(null);
+                    setStyle("-fx-background-color: #13141f; -fx-border-width: 0;");
                     return;
                 }
-                VBox box = new VBox(4);
+
+                Rectangle accent = new Rectangle(3, 38);
+                accent.setFill(Color.web(isSelected() ? "#3d5af1" : "#252848"));
+                accent.setArcWidth(2);
+                accent.setArcHeight(2);
+
+                VBox textBox = new VBox(3);
+                textBox.setAlignment(Pos.CENTER_LEFT);
+
                 Label nameLbl = new Label(sg.getName());
-                nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 15; -fx-font-weight: bold;");
-                Label dateLbl = new Label(
-                    "Erstellt: " + sg.getCreatedAt().format(FMT) +
-                    "  |  Zuletzt gespeichert: " + sg.getLastSaved().format(FMT)
-                );
-                dateLbl.setStyle("-fx-text-fill: #78909c; -fx-font-size: 11;");
-                box.getChildren().addAll(nameLbl, dateLbl);
-                setGraphic(box);
-                String bg = isSelected() ? "#1a2540" : "#13141f";
-                setStyle("-fx-padding: 10 16 10 16; -fx-background-color: " + bg + ";");
+                nameLbl.setStyle("-fx-text-fill: " + (isSelected() ? "white" : "#c8cce8")
+                        + "; -fx-font-size: 14; -fx-font-weight: bold;");
+                Label dateLbl = new Label("Gespeichert: " + sg.getLastSaved().format(FMT));
+                dateLbl.setStyle("-fx-text-fill: #546e7a; -fx-font-size: 11;");
+                textBox.getChildren().addAll(nameLbl, dateLbl);
+
+                HBox row = new HBox(12, accent, textBox);
+                row.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(row);
+                setStyle("-fx-padding: 10 16 10 12; -fx-background-color: "
+                        + (isSelected() ? "#181e36" : "#13141f")
+                        + "; -fx-border-color: transparent transparent #1a1d2e transparent;"
+                        + " -fx-border-width: 0 0 1 0;");
             }
         });
 
@@ -74,20 +84,47 @@ public class MainController {
             (obs, o, n) -> saveListView.refresh()
         );
 
+        Label savePlaceholder = new Label("Noch keine Spielstände vorhanden.");
+        savePlaceholder.setStyle("-fx-text-fill: #37474f; -fx-font-size: 13;");
+        saveListView.setPlaceholder(savePlaceholder);
+
+        refreshList();
         loadRanking();
     }
 
     private void loadRanking() {
         rankingStatusLabel.setText("Lade Rangliste...");
 
+        Label rankPlaceholder = new Label("Noch keine Einträge vorhanden.");
+        rankPlaceholder.setStyle("-fx-text-fill: #37474f; -fx-font-size: 12;");
+        rankingListView.setPlaceholder(rankPlaceholder);
+
         rankingListView.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(RankingClient.RankingEntry e, boolean empty) {
                 super.updateItem(e, empty);
-                if (empty || e == null) { setGraphic(null); setStyle(""); return; }
+                if (empty || e == null) {
+                    setGraphic(null);
+                    setStyle("-fx-background-color: transparent;");
+                    return;
+                }
 
-                Label rankLbl = new Label("#" + e.rank());
-                rankLbl.setStyle("-fx-text-fill: #3d5af1; -fx-font-size: 13; -fx-font-weight: bold; -fx-min-width: 40;");
+                String rankColor = switch (e.rank()) {
+                    case 1 -> "#ffd700";
+                    case 2 -> "#c0c0c0";
+                    case 3 -> "#cd7f32";
+                    default -> "#3d5af1";
+                };
+                String rankText = switch (e.rank()) {
+                    case 1 -> "🥇";
+                    case 2 -> "🥈";
+                    case 3 -> "🥉";
+                    default -> "#" + e.rank();
+                };
+
+                Label rankLbl = new Label(rankText);
+                rankLbl.setStyle("-fx-text-fill: " + rankColor
+                        + "; -fx-font-size: 13; -fx-font-weight: bold; -fx-min-width: 36;");
 
                 Label nameLbl = new Label(e.playerName());
                 nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
@@ -100,9 +137,8 @@ public class MainController {
 
                 HBox row = new HBox(10, rankLbl, nameLbl, spacer, worthLbl);
                 row.setAlignment(Pos.CENTER_LEFT);
-
                 setGraphic(row);
-                setStyle("-fx-background-color: #13141f; -fx-padding: 8 16 8 16; -fx-background-radius: 6;");
+                setStyle("-fx-background-color: transparent; -fx-padding: 6 16 6 16;");
             }
         });
 
@@ -125,11 +161,7 @@ public class MainController {
 
     private void refreshList() {
         saveListView.getItems().setAll(saveGameDao.findAll());
-        if (saveListView.getItems().isEmpty()) {
-            statusLabel.setText("Noch keine Spielstände vorhanden.");
-        } else {
-            statusLabel.setText("");
-        }
+        statusLabel.setText("");
     }
 
     @FXML

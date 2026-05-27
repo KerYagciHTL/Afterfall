@@ -441,7 +441,7 @@ public class GameView extends Canvas {
 
             // Auslastungs-Badge über dem Zug
             int    onboard  = train.getOnboardCount();
-            int    cap      = train.getType().capacity;
+            int    cap      = train.getType().capacity();
             String badgeTxt = onboard + "/" + cap;
             double bfs      = Math.max(7, 9.5 / zoom);
             double bpadX    = 4.5 / zoom;

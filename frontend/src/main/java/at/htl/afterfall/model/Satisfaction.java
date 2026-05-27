@@ -4,7 +4,7 @@ import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 
 public class Satisfaction {
-    private final DoubleProperty value = new SimpleDoubleProperty(50.0);
+    private final DoubleProperty value = new SimpleDoubleProperty(at.htl.afterfall.GameConfig.get().satInitial);
 
     public DoubleProperty valueProperty() { return value; }
     public double getValue()              { return value.get(); }

@@ -1,19 +1,12 @@
 package at.htl.afterfall.model;
 
+import at.htl.afterfall.GameConfig;
+
 public enum TrainType {
-    STANDARD(50,  1.0, 20_000,  0.40),
-    MEDIUM  (120, 1.0, 48_000,  0.80),
-    SUPER   (300, 1.3, 120_000, 1.60);
+    STANDARD, MEDIUM, SUPER;
 
-    public final int    capacity;
-    public final double speedFactor;
-    public final double buyCost;
-    public final double opCostPerKm;
-
-    TrainType(int capacity, double speedFactor, double buyCost, double opCostPerKm) {
-        this.capacity    = capacity;
-        this.speedFactor = speedFactor;
-        this.buyCost     = buyCost;
-        this.opCostPerKm = opCostPerKm;
-    }
+    public int    capacity()    { return GameConfig.get().trainSpec(this).capacity(); }
+    public double speedFactor() { return GameConfig.get().trainSpec(this).speedFactor(); }
+    public double buyCost()     { return GameConfig.get().trainSpec(this).buyCost(); }
+    public double opCostPerKm() { return GameConfig.get().trainSpec(this).opCostPerKm(); }
 }

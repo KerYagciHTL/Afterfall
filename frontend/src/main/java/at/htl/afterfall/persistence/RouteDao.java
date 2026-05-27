@@ -19,6 +19,7 @@ public class RouteDao {
                     Route route = new Route(rs.getInt("id"), Color.web(rs.getString("color_hex")));
                     route.setActive(rs.getInt("active") == 1);
                     route.setCircular(rs.getInt("circular") == 1);
+                    route.setName(rs.getString("name"));
                     loadStops(route, stationMap);
                     list.add(route);
                 }
@@ -54,12 +55,13 @@ public class RouteDao {
 
     public int insert(int saveId, Route route) {
         try (PreparedStatement ps = DatabaseManager.getConnection().prepareStatement(
-                "INSERT INTO routes (save_id, color_hex, active, circular) VALUES (?, ?, ?, ?)",
+                "INSERT INTO routes (save_id, color_hex, active, circular, name) VALUES (?, ?, ?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, saveId);
             ps.setString(2, route.getColorHex());
             ps.setInt(3, route.isActive() ? 1 : 0);
             ps.setInt(4, route.isCircular() ? 1 : 0);
+            ps.setString(5, route.getName());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 keys.next();
@@ -99,6 +101,17 @@ public class RouteDao {
         try (PreparedStatement ps = DatabaseManager.getConnection()
                 .prepareStatement("UPDATE routes SET active = ? WHERE id = ?")) {
             ps.setInt(1, active ? 1 : 0);
+            ps.setInt(2, routeId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void updateName(int routeId, String name) {
+        try (PreparedStatement ps = DatabaseManager.getConnection()
+                .prepareStatement("UPDATE routes SET name = ? WHERE id = ?")) {
+            ps.setString(1, name);
             ps.setInt(2, routeId);
             ps.executeUpdate();
         } catch (SQLException e) {

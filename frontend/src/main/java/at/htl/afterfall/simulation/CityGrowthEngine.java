@@ -1,17 +1,11 @@
 package at.htl.afterfall.simulation;
 
+import at.htl.afterfall.GameConfig;
 import at.htl.afterfall.model.*;
 import java.util.*;
 import java.util.function.Consumer;
 
 public class CityGrowthEngine {
-    private static final double INITIAL_DELAY    = 60.0;
-    private static final double MIN_INTERVAL     = 50.0;
-    private static final double MAX_INTERVAL     = 120.0;
-    private static final double MIN_STATION_DIST = 90.0;
-    private static final double SPAWN_RADIUS_MIN = 160.0;
-    private static final double SPAWN_RADIUS_MAX = 480.0;
-
     private static final List<String> NAMES = List.of(
         "Westpark", "Nordbrücke", "Südmarkt", "Hafen", "Flugfeld",
         "Bergdorf", "Seetor", "Altstadt", "Industriepark", "Botanika",
@@ -23,29 +17,34 @@ public class CityGrowthEngine {
     private final Random          rng       = new Random();
     private Consumer<Station>     onNewStation;
     private double                timer     = 0;
-    private double                nextSpawn = INITIAL_DELAY;
+    private double                nextSpawn;
     private int                   nameIndex = 0;
 
-    public CityGrowthEngine(GameWorld world) { this.world = world; }
+    public CityGrowthEngine(GameWorld world) {
+        this.world     = world;
+        this.nextSpawn = GameConfig.get().cityInitialDelay;
+    }
 
     public void setOnNewStation(Consumer<Station> cb) { this.onNewStation = cb; }
 
     public void tick(double delta) {
         timer += delta;
         if (timer < nextSpawn) return;
-        nextSpawn = timer + MIN_INTERVAL + rng.nextDouble() * (MAX_INTERVAL - MIN_INTERVAL);
+        GameConfig cfg = GameConfig.get();
+        nextSpawn = timer + cfg.cityMinInterval + rng.nextDouble() * (cfg.cityMaxInterval - cfg.cityMinInterval);
         spawnStation();
     }
 
     private void spawnStation() {
+        GameConfig cfg = GameConfig.get();
         double x = 0, y = 0;
         boolean placed = false;
         for (int attempt = 0; attempt < 30; attempt++) {
             double angle  = rng.nextDouble() * 2 * Math.PI;
-            double radius = SPAWN_RADIUS_MIN + rng.nextDouble() * (SPAWN_RADIUS_MAX - SPAWN_RADIUS_MIN);
+            double radius = cfg.citySpawnRadiusMin + rng.nextDouble() * (cfg.citySpawnRadiusMax - cfg.citySpawnRadiusMin);
             x = Math.cos(angle) * radius;
             y = Math.sin(angle) * radius;
-            if (farFromAll(x, y)) { placed = true; break; }
+            if (farFromAll(x, y, cfg.cityMinStationDist)) { placed = true; break; }
         }
         if (!placed) return;
 
@@ -57,9 +56,9 @@ public class CityGrowthEngine {
         if (onNewStation != null) onNewStation.accept(s);
     }
 
-    private boolean farFromAll(double x, double y) {
+    private boolean farFromAll(double x, double y, double minDist) {
         for (Station s : world.getStations()) {
-            if (Math.hypot(s.getX() - x, s.getY() - y) < MIN_STATION_DIST) return false;
+            if (Math.hypot(s.getX() - x, s.getY() - y) < minDist) return false;
         }
         return true;
     }

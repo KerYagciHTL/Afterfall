@@ -87,6 +87,9 @@
                     <Button text="✏  Bearbeiten" onAction="#onEditRoute"
                             maxWidth="Infinity" styleClass="btn-primary sidebar-btn"/>
 
+                    <Button text="🏷  Umbenennen" onAction="#onRenameRoute"
+                            maxWidth="Infinity" styleClass="btn-neutral sidebar-btn"/>
+
                     <HBox spacing="8">
                         <Button text="Ein / Aus" onAction="#onToggleRoute"
                                 maxWidth="Infinity" styleClass="btn-neutral sidebar-btn"
