@@ -272,10 +272,11 @@ public class GameController {
                         case DELETE -> deleteSelected();
                         case S -> {
                             if (e.isControlDown()) saveGame();
+                            else if (buildMode == BuildMode.BUILD_STATION) cancelBuildMode();
                             else activateBuildStation();
                         }
-                        case T -> activateBuildTrack();
-                        case R -> activateBuildRoute();
+                        case T -> { if (buildMode == BuildMode.BUILD_TRACK) cancelBuildMode(); else activateBuildTrack(); }
+                        case R -> { if (buildMode == BuildMode.BUILD_ROUTE) cancelBuildMode(); else activateBuildRoute(); }
                     }
                 });
             }
