@@ -1167,8 +1167,8 @@ public class GameController {
         double netWorth = world.getEconomy().getNetWorth();
         RankingClient.submitScore(
             netWorth,
-            rank -> navigateToMenu(),
-            ()   -> navigateToMenu()
+            rank -> { showToast("Rang #" + rank + " in der Rangliste! 🏆", false); navigateToMenu(); },
+            ()   -> { showToast("Rangliste nicht erreichbar.", true); navigateToMenu(); }
         );
     }
 
