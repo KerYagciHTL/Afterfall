@@ -46,12 +46,13 @@ public class GameLoop extends AnimationTimer {
         // Balance vor dem Tick → für Einnahmen-Rate
         double balanceBefore = world.getEconomy().getBalance();
 
+        // wenn gamespeed == 3 und wenn man über 20 Stationen hat, kann es beginnen zu laggen
+        // profiler sagt > 600MB RAM und 25% CPU usage 🫡
         cityGrowthEngine.tick(scaledDelta);
         passengerSim.tick(scaledDelta);
         economyEngine.tick(scaledDelta);
         satisfactionEngine.tick(scaledDelta);
 
-        // EMA für €/s — gegen reale Zeit (nicht Spielzeit), damit Label stabil bleibt
         double netChange    = world.getEconomy().getBalance() - balanceBefore;
         double instantRate  = delta > 0 ? netChange / delta : 0;
         double alpha        = delta / (SMOOTH_TIME + delta);
