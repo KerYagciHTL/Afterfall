@@ -1089,6 +1089,7 @@ public class GameController {
         if (serverMode) {
             serverSpeed = serverSpeed % 3 + 1;
             sendCmd(new SetSpeedCommand(GameClient.get().getPlayerUuid(), serverSpeed));
+            gameLoop.setSpeedMultiplier(serverSpeed);
             speedButton.setText("▶▶  " + serverSpeed + "×");
             speedButton.setStyle(serverSpeed > 1
                     ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
@@ -1416,10 +1417,12 @@ public class GameController {
     private void navigateToMenu() {
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/main.fxml"));
-            Scene menuScene = new Scene(loader.load(), 900, 700);
+            Scene menuScene = new Scene(loader.load(), 1000, 800);
             Stage stage = (Stage) canvasContainer.getScene().getWindow();
-            stage.setMaximized(true);
+            stage.setMaximized(false);
             stage.setScene(menuScene);
+            stage.setWidth(1000);
+            stage.setHeight(800);
         } catch (IOException e) {
             showToast("Fehler beim Öffnen des Menüs.", true);
         }
