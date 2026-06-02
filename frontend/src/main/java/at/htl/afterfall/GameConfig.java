@@ -10,6 +10,10 @@ public class GameConfig {
 
     private static volatile GameConfig instance;
 
+    // ── Game Server ───────────────────────────────────────────────────────────
+    public final String gameServerHost;
+    public final int    gameServerPort;
+
     // ── Economy ───────────────────────────────────────────────────────────────
     public final double startingBalance;
     public final double startingNetWorth;
@@ -79,7 +83,11 @@ public class GameConfig {
     }
 
     private GameConfig(JSONObject cfg) {
+        JSONObject gs   = cfg.optJSONObject("gameServer");
         JSONObject eco  = cfg.optJSONObject("economy");
+
+        gameServerHost = gs != null && gs.has("host") ? gs.getString("host") : "localhost";
+        gameServerPort = gs != null && gs.has("port") ? gs.getInt("port") : 9090;
         JSONObject pass = cfg.optJSONObject("passenger");
         JSONObject city = cfg.optJSONObject("cityGrowth");
         JSONObject sat  = cfg.optJSONObject("satisfaction");

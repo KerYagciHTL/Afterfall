@@ -51,9 +51,8 @@ public class RankingClient {
         } catch (Exception ignored) {}
     }
 
-    public static boolean hasPlayerName() {
-        return !loadPlayerName().isBlank();
-    }
+    public static boolean hasPlayerName()   { return !loadPlayerName().isBlank(); }
+    public static String  getPlayerName()   { return loadPlayerName(); }
 
     public static void ensurePlayerName() {
         if (hasPlayerName()) return;
