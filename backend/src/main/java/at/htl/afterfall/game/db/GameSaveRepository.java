@@ -6,6 +6,7 @@ import at.htl.afterfall.protocol.dto.SaveInfoDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -88,6 +89,7 @@ public class GameSaveRepository {
         }
     }
 
+    @Transactional
     public void saveWorld(int saveId, ServerGameWorld world) {
         deleteWorldData(saveId);
 

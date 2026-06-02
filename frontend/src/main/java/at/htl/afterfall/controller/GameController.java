@@ -325,6 +325,7 @@ public class GameController {
         for (StationDto dto : snap.stations) {
             Station s = new Station(dto.id, dto.name, dto.x, dto.y);
             s.setWaitingCount(dto.waitingCount);
+            s.setDemandingConnection(dto.demandingConnection);
             world.getStations().add(s);
             stationMap.put(dto.id, s);
         }
@@ -1361,19 +1362,32 @@ public class GameController {
     private void saveGameToDB() {
         if (world.getCurrentSave() == null) return;
         int id = world.getCurrentSave().getId();
+        try {
+            var conn = at.htl.afterfall.persistence.DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+            try {
+                trainDao.deleteAllBySaveId(id);
+                routeDao.deleteAllBySaveId(id);
+                trackDao.deleteAllBySaveId(id);
+                stationDao.deleteAllBySaveId(id);
 
-        trainDao.deleteAllBySaveId(id);
-        routeDao.deleteAllBySaveId(id);
-        trackDao.deleteAllBySaveId(id);
-        stationDao.deleteAllBySaveId(id);
+                for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
+                for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
+                for (Route r   : world.getRoutes())   routeDao.insert(id, r);
+                for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
 
-        for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
-        for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
-        for (Route r   : world.getRoutes())   routeDao.insert(id, r);
-        for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
-
-        economyDao.save(id, world.getEconomy(), world.getSatisfaction());
-        saveGameDao.updateLastSaved(id);
+                economyDao.save(id, world.getEconomy(), world.getSatisfaction());
+                saveGameDao.updateLastSaved(id);
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            showToast("Fehler beim Speichern: " + e.getMessage(), true);
+        }
     }
 
     private void saveGame() {

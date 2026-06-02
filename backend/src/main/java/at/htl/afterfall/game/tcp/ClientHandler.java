@@ -101,6 +101,7 @@ public class ClientHandler implements Runnable {
             return;
         }
         currentSaveId = cmd.saveId;
+        session.respawnLoadedTrains();
         session.setOnQuit(this::onSessionQuit);
         session.startSimulation();
         send(CommandResult.ok(session.buildSnapshot()));

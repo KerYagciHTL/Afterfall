@@ -31,7 +31,6 @@ public class GameSession {
     private final ObjectOutputStream out;
     private final Random             rng      = new Random();
     private boolean                  paused   = false;
-    private int                      speed    = 1;
     private long                     lastSave = 0;
     private Consumer<GameSession>    onQuit;
 
@@ -42,6 +41,17 @@ public class GameSession {
         this.passengerSim       = new ServerPassengerSimulation(world);
         this.satisfactionEngine = new ServerSatisfactionEngine(world);
         this.cityGrowthEngine   = new ServerCityGrowthEngine(world);
+        cityGrowthEngine.setOnNewStation(s -> {
+            sendSnapshot();
+            try {
+                synchronized (out) {
+                    out.writeObject(new NewStationEvent(
+                        new StationDto(s.getId(), s.getName(), s.getX(), s.getY(), 0)));
+                    out.reset();
+                    out.flush();
+                }
+            } catch (Exception ignored) {}
+        });
     }
 
     public void seedInitialEntities() {
@@ -72,7 +82,7 @@ public class GameSession {
 
     private void tick() {
         if (paused) return;
-        double delta = TICK_DELTA * speed;
+        double delta = TICK_DELTA;
 
         double balanceBefore = world.getEconomy().getBalance();
         cityGrowthEngine.tick(delta);
@@ -121,8 +131,11 @@ public class GameSession {
 
     public void sendSnapshot() {
         try {
-            out.writeObject(buildSnapshot());
-            out.reset();
+            synchronized (out) {
+                out.writeObject(buildSnapshot());
+                out.reset();
+                out.flush();
+            }
         } catch (Exception e) {
             stopSimulation();
         }
@@ -130,8 +143,12 @@ public class GameSession {
 
     public GameStateSnapshot buildSnapshot() {
         List<StationDto> stations = world.getStations().stream()
-            .map(s -> new StationDto(s.getId(), s.getName(), s.getX(), s.getY(),
-                                     s.getWaitingPassengers().size()))
+            .map(s -> {
+                StationDto dto = new StationDto(s.getId(), s.getName(), s.getX(), s.getY(),
+                                                s.getWaitingPassengers().size());
+                dto.demandingConnection = s.isDemandingConnection();
+                return dto;
+            })
             .toList();
         List<TrackDto> tracks = world.getTracks().stream()
             .map(t -> new TrackDto(t.getId(), t.getFrom().getId(), t.getTo().getId()))
@@ -409,11 +426,30 @@ public class GameSession {
     }
 
     public void handleSetSpeed(SetSpeedCommand cmd) {
-        scheduler.submit(() -> this.speed = Math.max(1, Math.min(3, cmd.multiplier)));
+        // Speed is visual-only on client; server always runs at fixed rate
     }
 
     public void handleSetTicketPrice(SetTicketPriceCommand cmd) {
-        scheduler.submit(() -> world.getEconomy().setTicketPrice(cmd.price));
+        double clamped = Math.max(0.5, Math.min(10.0, cmd.price));
+        scheduler.submit(() -> world.getEconomy().setTicketPrice(clamped));
+    }
+
+    public void respawnLoadedTrains() {
+        for (ServerRoute route : world.getRoutes()) {
+            List<ServerTrain> trains = route.getTrains();
+            for (int i = 0; i < trains.size(); i++) {
+                trains.get(i).setCurrentStopIndex(0);
+                trains.get(i).setPosition(i * (1.0 / Math.max(trains.size(), 1)));
+                trains.get(i).setForward(true);
+            }
+            // Re-distribute using spawnOnRoute; process one at a time so findBestSpawnIndex works
+            List<ServerTrain> copy = new ArrayList<>(trains);
+            for (ServerTrain t : copy) {
+                t.setCurrentStopIndex(0);
+                t.setPosition(0.0);
+            }
+            for (ServerTrain t : copy) spawnOnRoute(t, route);
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
