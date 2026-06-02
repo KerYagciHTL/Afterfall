@@ -1,0 +1,38 @@
+package at.htl.afterfall.game.model;
+
+import at.htl.afterfall.protocol.TrainType;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class ServerTrain {
+    private int       id;
+    private TrainType type;
+    private ServerRoute route;
+    private boolean   active           = true;
+    private double    position         = 0.0;
+    private int       currentStopIndex = 0;
+    private boolean   forward          = true;
+    private final List<ServerPassenger> onboardPassengers = new ArrayList<>();
+
+    public ServerTrain(int id, TrainType type) {
+        this.id   = id;
+        this.type = type;
+    }
+
+    public int          getId()                        { return id; }
+    public void         setId(int id)                  { this.id = id; }
+    public TrainType    getType()                      { return type; }
+    public ServerRoute  getRoute()                     { return route; }
+    public void         setRoute(ServerRoute r)        { this.route = r; }
+    public boolean      isActive()                     { return active; }
+    public void         setActive(boolean v)           { this.active = v; }
+    public double       getPosition()                  { return position; }
+    public void         setPosition(double p)          { this.position = p; }
+    public int          getCurrentStopIndex()          { return currentStopIndex; }
+    public void         setCurrentStopIndex(int i)     { this.currentStopIndex = i; }
+    public boolean      isForward()                    { return forward; }
+    public void         setForward(boolean f)          { this.forward = f; }
+    public List<ServerPassenger> getOnboardPassengers(){ return onboardPassengers; }
+    public int          getOnboardCount()              { return onboardPassengers.size(); }
+}
