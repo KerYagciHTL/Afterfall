@@ -4,6 +4,11 @@ import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.SaveGame;
 import at.htl.afterfall.persistence.DatabaseManager;
 import at.htl.afterfall.persistence.SaveGameDao;
+import at.htl.afterfall.protocol.command.ListSavesCommand;
+import at.htl.afterfall.protocol.command.NewGameCommand;
+import at.htl.afterfall.protocol.command.LoadGameCommand;
+import at.htl.afterfall.protocol.dto.SaveInfoDto;
+import at.htl.afterfall.util.GameClient;
 import at.htl.afterfall.util.RankingClient;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -22,6 +27,7 @@ import javafx.util.Duration;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class MainController {
@@ -35,6 +41,7 @@ public class MainController {
 
     private final SaveGameDao saveGameDao = new SaveGameDao();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+    private int selectedSaveId = -1;
     private Timeline rankingRefreshTimer;
 
     @FXML
@@ -95,8 +102,11 @@ public class MainController {
         refreshList();
         loadRanking();
 
-        // Spielername einmalig beim ersten Start abfragen
-        Platform.runLater(RankingClient::ensurePlayerName);
+        // Spielername einmalig beim ersten Start abfragen, dann zum Server verbinden
+        Platform.runLater(() -> {
+            RankingClient.ensurePlayerName();
+            connectGameServer();
+        });
     }
 
     private void loadRanking() {
@@ -172,9 +182,61 @@ public class MainController {
         return String.format("%.0f €", amount);
     }
 
-    private void refreshList() {
+    private void connectGameServer() {
+        GameClient client = GameClient.get();
+        if (client.isConnected()) { refreshServerSaves(); return; }
+
+        CompletableFuture.runAsync(() -> {
+            if (!client.connect()) {
+                Platform.runLater(() -> statusLabel.setText("Game Server nicht erreichbar – offline-Modus."));
+                refreshLocalList();
+                return;
+            }
+            try {
+                String uuid = GameClient.loadOrCreateUuid();
+                String name = RankingClient.getPlayerName();
+                client.setOnSaveList(saves -> updateSaveList(saves));
+                client.register(uuid, name);
+                client.send(new ListSavesCommand(uuid));
+            } catch (Exception e) {
+                Platform.runLater(() -> statusLabel.setText("Registrierung fehlgeschlagen."));
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateSaveList(List<?> saves) {
+        saveListView.getItems().clear();
+        selectedSaveId = -1;
+        for (Object o : saves) {
+            if (o instanceof SaveInfoDto dto) {
+                SaveGame sg = new SaveGame(dto.id, dto.name,
+                    parseDateTime(dto.createdAt), parseDateTime(dto.lastSavedAt));
+                saveListView.getItems().add(sg);
+            }
+        }
+        statusLabel.setText("");
+    }
+
+    private java.time.LocalDateTime parseDateTime(String s) {
+        try { return java.time.LocalDateTime.parse(s.replace(" ", "T")); }
+        catch (Exception e) { return LocalDateTime.now(); }
+    }
+
+    private void refreshServerSaves() {
+        try {
+            GameClient.get().send(new ListSavesCommand(GameClient.get().getPlayerUuid()));
+        } catch (Exception e) { refreshLocalList(); }
+    }
+
+    private void refreshLocalList() {
         saveListView.getItems().setAll(saveGameDao.findAll());
         statusLabel.setText("");
+    }
+
+    private void refreshList() {
+        if (GameClient.get().isConnected()) refreshServerSaves();
+        else refreshLocalList();
     }
 
     @FXML
@@ -184,10 +246,19 @@ public class MainController {
         dlg.setHeaderText("Name des neuen Spielstands:");
         dlg.setContentText("Name:");
         dlg.showAndWait().ifPresent(name -> {
-            if (!name.isBlank()) {
-                int id   = saveGameDao.insert(name);
+            if (name.isBlank()) return;
+            if (GameClient.get().isConnected()) {
+                try {
+                    GameClient client = GameClient.get();
+                    client.setOnSnapshot(snapshot -> openGameWithSnapshot(snapshot));
+                    client.send(new NewGameCommand(client.getPlayerUuid(), name));
+                } catch (Exception e) {
+                    statusLabel.setText("Fehler: " + e.getMessage());
+                }
+            } else {
+                int id = saveGameDao.insert(name);
                 SaveGame sg = new SaveGame(id, name, LocalDateTime.now(), LocalDateTime.now());
-                openGame(sg, true);
+                openGameOffline(sg, true);
             }
         });
     }
@@ -195,14 +266,24 @@ public class MainController {
     @FXML
     public void onLoad() {
         SaveGame selected = saveListView.getSelectionModel().getSelectedItem();
-        if (selected != null) openGame(selected, false);
+        if (selected == null) return;
+        if (GameClient.get().isConnected()) {
+            try {
+                GameClient client = GameClient.get();
+                client.setOnSnapshot(snapshot -> openGameWithSnapshot(snapshot));
+                client.send(new LoadGameCommand(client.getPlayerUuid(), selected.getId()));
+            } catch (Exception e) {
+                statusLabel.setText("Fehler: " + e.getMessage());
+            }
+        } else {
+            openGameOffline(selected, false);
+        }
     }
 
     @FXML
     public void onDelete() {
         SaveGame selected = saveListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Spielstand löschen");
         confirm.setHeaderText("\"" + selected.getName() + "\" wirklich löschen?");
@@ -210,25 +291,42 @@ public class MainController {
         confirm.showAndWait()
                .filter(r -> r == ButtonType.OK)
                .ifPresent(r -> {
-                   saveGameDao.delete(selected.getId());
+                   if (GameClient.get().isConnected()) {
+                       try {
+                           GameClient.get().send(new at.htl.afterfall.protocol.command.DeleteRouteCommand(
+                               GameClient.get().getPlayerUuid(), selected.getId()));
+                       } catch (Exception ignored) {}
+                   } else {
+                       saveGameDao.delete(selected.getId());
+                   }
                    refreshList();
                    statusLabel.setText("\"" + selected.getName() + "\" wurde gelöscht.");
                });
     }
 
-    private void openGame(SaveGame save, boolean isNewGame) {
+    private void openGameWithSnapshot(at.htl.afterfall.protocol.response.GameStateSnapshot snapshot) {
         if (rankingRefreshTimer != null) rankingRefreshTimer.stop();
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/game.fxml"));
             loader.load();
             GameController ctrl = loader.getController();
+            ctrl.initFromSnapshot(snapshot);
+            Stage stage = (Stage) saveListView.getScene().getWindow();
+            stage.setScene(new Scene(loader.getRoot()));
+            stage.setMaximized(true);
+        } catch (IOException e) {
+            statusLabel.setText("Fehler beim Öffnen des Spiels: " + e.getMessage());
+        }
+    }
 
-            if (isNewGame) {
-                ctrl.startNewGame(save);
-            } else {
-                ctrl.loadGame(save);
-            }
-
+    private void openGameOffline(SaveGame save, boolean isNewGame) {
+        if (rankingRefreshTimer != null) rankingRefreshTimer.stop();
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/game.fxml"));
+            loader.load();
+            GameController ctrl = loader.getController();
+            if (isNewGame) ctrl.startNewGame(save);
+            else ctrl.loadGame(save);
             Stage stage = (Stage) saveListView.getScene().getWindow();
             stage.setScene(new Scene(loader.getRoot()));
             stage.setMaximized(true);

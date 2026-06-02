@@ -13,6 +13,7 @@ public class GameLoop extends AnimationTimer {
     private long    lastTime        = 0;
     private boolean paused          = false;
     private int     speedMultiplier = 1;
+    private boolean serverMode      = false;
 
     private final GameWorld           world;
     private final GameView            gameView;
@@ -34,8 +35,11 @@ public class GameLoop extends AnimationTimer {
         cityGrowthEngine.setOnNewStation(cb);
     }
 
+    public void setServerMode(boolean b) { serverMode = b; }
+
     @Override
     public void handle(long now) {
+        if (serverMode) { gameView.render(); return; }
         if (paused) return;
         if (lastTime == 0) { lastTime = now; return; }
 
