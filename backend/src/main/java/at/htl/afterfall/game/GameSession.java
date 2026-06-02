@@ -94,7 +94,8 @@ public class GameSession {
             List<GameStateUpdate.TrainPosition> trainPos = new ArrayList<>();
             for (ServerTrain t : world.getTrains()) {
                 trainPos.add(new GameStateUpdate.TrainPosition(
-                    t.getId(), t.getCurrentStopIndex(), t.getPosition(), t.isForward()));
+                    t.getId(), t.getCurrentStopIndex(), t.getPosition(), t.isForward(),
+                    t.getOnboardCount()));
             }
             List<GameStateUpdate.StationWaiting> waiting = new ArrayList<>();
             for (ServerStation s : world.getStations()) {
@@ -145,7 +146,8 @@ public class GameSession {
             .map(t -> new TrainDto(
                 t.getId(), t.getType(),
                 t.getRoute() != null ? t.getRoute().getId() : -1,
-                t.getCurrentStopIndex(), t.getPosition(), t.isForward(), t.isActive()))
+                t.getCurrentStopIndex(), t.getPosition(), t.isForward(), t.isActive(),
+                t.getOnboardCount()))
             .toList();
         ServerEconomy eco = world.getEconomy();
         return new GameStateSnapshot(stations, tracks, routes, trains,

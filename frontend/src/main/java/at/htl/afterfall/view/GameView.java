@@ -373,7 +373,7 @@ public class GameView extends Canvas {
             gc.setFill(Color.web("#C5CAE9"));
             gc.fillText(s.getName(), s.getX(), s.getY() + STATION_RADIUS + fontSize + 3);
 
-            int waiting = s.getWaitingPassengers().size();
+            int waiting = s.getWaitingCount();
             if (waiting > 0) {
                 String  txt  = String.valueOf(waiting);
                 double  fs   = Math.max(8, 10.5 / zoom);

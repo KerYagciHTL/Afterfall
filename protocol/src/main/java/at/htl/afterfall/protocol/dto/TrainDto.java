@@ -14,11 +14,13 @@ public class TrainDto implements Serializable {
     public double    position;
     public boolean   forward;
     public boolean   active;
+    public int       passengerCount;
 
     public TrainDto() {}
 
     public TrainDto(int id, TrainType type, int routeId, int currentStopIndex,
-                    double position, boolean forward, boolean active) {
+                    double position, boolean forward, boolean active,
+                    int passengerCount) {
         this.id               = id;
         this.type             = type;
         this.routeId          = routeId;
@@ -26,5 +28,6 @@ public class TrainDto implements Serializable {
         this.position         = position;
         this.forward          = forward;
         this.active           = active;
+        this.passengerCount   = passengerCount;
     }
 }

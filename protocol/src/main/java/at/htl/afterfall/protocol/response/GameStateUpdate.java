@@ -31,14 +31,17 @@ public class GameStateUpdate extends GameResponse {
         public int     stopIndex;
         public double  position;
         public boolean forward;
+        public int     passengerCount;
 
         public TrainPosition() {}
 
-        public TrainPosition(int trainId, int stopIndex, double position, boolean forward) {
-            this.trainId   = trainId;
-            this.stopIndex = stopIndex;
-            this.position  = position;
-            this.forward   = forward;
+        public TrainPosition(int trainId, int stopIndex, double position, boolean forward,
+                             int passengerCount) {
+            this.trainId        = trainId;
+            this.stopIndex      = stopIndex;
+            this.position       = position;
+            this.forward        = forward;
+            this.passengerCount = passengerCount;
         }
     }
 

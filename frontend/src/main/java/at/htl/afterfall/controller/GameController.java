@@ -324,6 +324,7 @@ public class GameController {
         Map<Integer, Station> stationMap = new HashMap<>();
         for (StationDto dto : snap.stations) {
             Station s = new Station(dto.id, dto.name, dto.x, dto.y);
+            s.setWaitingCount(dto.waitingCount);
             world.getStations().add(s);
             stationMap.put(dto.id, s);
         }
@@ -361,6 +362,7 @@ public class GameController {
             train.setCurrentStopIndex(dto.currentStopIndex);
             train.setPosition(dto.position);
             train.setForward(dto.forward);
+            train.setPassengerCount(dto.passengerCount);
             world.getTrains().add(train);
         }
 
@@ -408,6 +410,16 @@ public class GameController {
                     t.setCurrentStopIndex(tp.stopIndex);
                     t.setPosition(tp.position);
                     t.setForward(tp.forward);
+                    t.setPassengerCount(tp.passengerCount);
+                    break;
+                }
+            }
+        }
+
+        for (GameStateUpdate.StationWaiting sw : update.stationWaiting) {
+            for (Station s : world.getStations()) {
+                if (s.getId() == sw.stationId) {
+                    s.setWaitingCount(sw.waitingCount);
                     break;
                 }
             }
