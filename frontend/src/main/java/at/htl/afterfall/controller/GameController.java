@@ -290,7 +290,7 @@ public class GameController {
 
     // ── Server-Modus: Einstieg & Updates ─────────────────────────────────────
 
-    public void initFromSnapshot(GameStateSnapshot snapshot) {
+    public void initFromSnapshot(GameStateSnapshot snapshot, boolean isNewGame) {
         serverMode = true;
         gameLoop.setServerMode(true);
 
@@ -308,6 +308,10 @@ public class GameController {
         }));
 
         applySnapshot(snapshot);
+        
+        if (isNewGame) {
+            setupTutorial(false);
+        }
     }
 
     private void applySnapshot(GameStateSnapshot snap) {
@@ -855,12 +859,14 @@ public class GameController {
 
     // ── Tutorial ──────────────────────────────────────────────────────────────
 
-    private void setupTutorial() {
-        Station s1 = new Station(world.nextStationId(), "Hauptbahnhof", -200, 0);
-        Station s2 = new Station(world.nextStationId(), "Stadtzentrum", 200, 0);
-        world.getStations().addAll(s1, s2);
-        Train startTrain = new Train(world.nextTrainId(), TrainType.STANDARD);
-        world.getTrains().add(startTrain);
+    private void setupTutorial(boolean seedEntities) {
+        if (seedEntities) {
+            Station s1 = new Station(world.nextStationId(), "Hauptbahnhof", -200, 0);
+            Station s2 = new Station(world.nextStationId(), "Stadtzentrum", 200, 0);
+            world.getStations().addAll(s1, s2);
+            Train startTrain = new Train(world.nextTrainId(), TrainType.STANDARD);
+            world.getTrains().add(startTrain);
+        }
 
         tutorialManager = new TutorialManager();
         tutorialOverlay = new TutorialOverlay(tutorialManager, this::advanceTutorial, this::skipTutorial);
@@ -869,8 +875,6 @@ public class GameController {
         tutorialTimer = new Timeline(new KeyFrame(Duration.millis(500), e -> checkTutorial()));
         tutorialTimer.setCycleCount(Timeline.INDEFINITE);
         tutorialTimer.play();
-
-        gameView.render();
     }
 
     private void checkTutorial() {
@@ -1299,7 +1303,7 @@ public class GameController {
 
     public void startNewGame(SaveGame save) {
         world.setCurrentSave(save);
-        setupTutorial();
+        setupTutorial(true);
     }
 
     public void loadGame(SaveGame save) {

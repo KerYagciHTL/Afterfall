@@ -84,6 +84,7 @@ public class ClientHandler implements Runnable {
         cleanupSession();
         currentSaveId = saveRepo.createSave(playerUuid, cmd.saveName);
         session = new GameSession(out);
+        session.seedInitialEntities();
         session.setOnQuit(this::onSessionQuit);
         session.startSimulation();
         send(CommandResult.ok(session.buildSnapshot()));

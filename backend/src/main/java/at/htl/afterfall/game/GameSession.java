@@ -44,6 +44,15 @@ public class GameSession {
         this.cityGrowthEngine   = new ServerCityGrowthEngine(world);
     }
 
+    public void seedInitialEntities() {
+        ServerStation s1 = new ServerStation(world.nextStationId(), "Hauptbahnhof", -200, 0);
+        ServerStation s2 = new ServerStation(world.nextStationId(), "Stadtzentrum", 200, 0);
+        world.getStations().add(s1);
+        world.getStations().add(s2);
+        ServerTrain t = new ServerTrain(world.nextTrainId(), TrainType.STANDARD);
+        world.getTrains().add(t);
+    }
+
     public void setOnQuit(Consumer<GameSession> cb) { this.onQuit = cb; }
 
     public ServerGameWorld getWorld() { return world; }

@@ -250,7 +250,7 @@ public class MainController {
             if (GameClient.get().isConnected()) {
                 try {
                     GameClient client = GameClient.get();
-                    client.setOnSnapshot(snapshot -> openGameWithSnapshot(snapshot));
+                    client.setOnSnapshot(snapshot -> openGameWithSnapshot(snapshot, true));
                     client.send(new NewGameCommand(client.getPlayerUuid(), name));
                 } catch (Exception e) {
                     statusLabel.setText("Fehler: " + e.getMessage());
@@ -270,7 +270,7 @@ public class MainController {
         if (GameClient.get().isConnected()) {
             try {
                 GameClient client = GameClient.get();
-                client.setOnSnapshot(snapshot -> openGameWithSnapshot(snapshot));
+                client.setOnSnapshot(snapshot -> openGameWithSnapshot(snapshot, false));
                 client.send(new LoadGameCommand(client.getPlayerUuid(), selected.getId()));
             } catch (Exception e) {
                 statusLabel.setText("Fehler: " + e.getMessage());
@@ -304,13 +304,13 @@ public class MainController {
                });
     }
 
-    private void openGameWithSnapshot(at.htl.afterfall.protocol.response.GameStateSnapshot snapshot) {
+    private void openGameWithSnapshot(at.htl.afterfall.protocol.response.GameStateSnapshot snapshot, boolean isNewGame) {
         if (rankingRefreshTimer != null) rankingRefreshTimer.stop();
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/game.fxml"));
             loader.load();
             GameController ctrl = loader.getController();
-            ctrl.initFromSnapshot(snapshot);
+            ctrl.initFromSnapshot(snapshot, isNewGame);
             Stage stage = (Stage) saveListView.getScene().getWindow();
             stage.setScene(new Scene(loader.getRoot()));
             stage.setMaximized(true);
