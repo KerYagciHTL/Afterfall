@@ -14,6 +14,7 @@ public class Train {
     private int     currentStopIndex = 0;
     private boolean forward          = true;
     private final List<Passenger> onboardPassengers = new ArrayList<>();
+    private int passengerCount = 0;
 
     public Train(int id, TrainType type) {
         this.id   = id;
@@ -37,5 +38,6 @@ public class Train {
     public boolean         isForward()               { return forward; }
     public void            setForward(boolean f)     { this.forward = f; }
     public List<Passenger> getOnboardPassengers()    { return onboardPassengers; }
-    public int             getOnboardCount()         { return onboardPassengers.size(); }
+    public int             getOnboardCount()          { return passengerCount > 0 ? passengerCount : onboardPassengers.size(); }
+    public void            setPassengerCount(int n)   { this.passengerCount = n; }
 }

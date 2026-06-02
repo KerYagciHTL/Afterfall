@@ -11,6 +11,7 @@ public class Station {
     private final DoubleProperty x = new SimpleDoubleProperty();
     private final DoubleProperty y = new SimpleDoubleProperty();
     private final ObservableList<Passenger> waitingPassengers = FXCollections.observableArrayList();
+    private int waitingCount = 0;
     private boolean demandingConnection = false;
 
     public Station(int id, String name, double x, double y) {
@@ -31,6 +32,8 @@ public class Station {
     public double getY() { return y.get(); }
 
     public ObservableList<Passenger> getWaitingPassengers() { return waitingPassengers; }
+    public int getWaitingCount() { return waitingCount > 0 ? waitingCount : waitingPassengers.size(); }
+    public void setWaitingCount(int n) { this.waitingCount = n; }
 
     public boolean isDemandingConnection()         { return demandingConnection; }
     public void    setDemandingConnection(boolean v) { this.demandingConnection = v; }

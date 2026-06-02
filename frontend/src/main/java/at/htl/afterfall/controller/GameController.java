@@ -4,6 +4,10 @@ import at.htl.afterfall.GameConfig;
 import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.*;
 import at.htl.afterfall.persistence.*;
+import at.htl.afterfall.protocol.command.*;
+import at.htl.afterfall.protocol.dto.*;
+import at.htl.afterfall.protocol.response.*;
+import at.htl.afterfall.util.GameClient;
 import at.htl.afterfall.util.RankingClient;
 import at.htl.afterfall.simulation.GameLoop;
 import at.htl.afterfall.tutorial.TutorialManager;
@@ -30,6 +34,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -37,65 +42,59 @@ import java.util.stream.Collectors;
 
 public class GameController {
 
-    @FXML
-    private Label balanceLabel;
-    @FXML
-    private Label incomeRateLabel;
-    @FXML
-    private Label satisfactionLabel;
-    @FXML
-    private Label netWorthLabel;
-    @FXML
-    private Button pauseButton;
-    @FXML
-    private Button speedButton;
-    @FXML
-    private ToggleButton buildStationBtn;
-    @FXML
-    private ToggleButton buildTrackBtn;
-    @FXML
-    private ToggleButton buildRouteBtn;
-    @FXML
-    private StackPane canvasContainer;
-    @FXML
-    private ListView<Route> routeListView;
-    @FXML
-    private ListView<Train> trainListView;
-    @FXML
-    private Label editStatusLabel;
+    @FXML private Label balanceLabel;
+    @FXML private Label incomeRateLabel;
+    @FXML private Label satisfactionLabel;
+    @FXML private Label netWorthLabel;
+    @FXML private Button pauseButton;
+    @FXML private Button speedButton;
+    @FXML private ToggleButton buildStationBtn;
+    @FXML private ToggleButton buildTrackBtn;
+    @FXML private ToggleButton buildRouteBtn;
+    @FXML private StackPane canvasContainer;
+    @FXML private ListView<Route> routeListView;
+    @FXML private ListView<Train> trainListView;
+    @FXML private Label editStatusLabel;
 
     private GameWorld world;
-    private GameView gameView;
-    private GameLoop gameLoop;
+    private GameView  gameView;
+    private GameLoop  gameLoop;
     private ColorGenerator colorGen;
-    private BuildMode buildMode = BuildMode.NONE;
-    private Station trackStart;
-    private Route activeRoute;
-    private VBox toastContainer;
-    private Region toastSpacer;
-    private VBox trainShopOverlay = null;
-    private long lastRateUiUpdate = 0;
+    private BuildMode buildMode   = BuildMode.NONE;
+    private Station   trackStart;
+    private Route     activeRoute;
+    private VBox      toastContainer;
+    private Region    toastSpacer;
+    private VBox      trainShopOverlay = null;
+    private long      lastRateUiUpdate = 0;
     private final Random rng = new Random();
     private TutorialManager tutorialManager;
     private TutorialOverlay tutorialOverlay;
     private Timeline        tutorialTimer;
 
+    // ── Server-Modus ─────────────────────────────────────────────────────────
+    private boolean serverMode          = false;
+    private int     activeRouteId       = -1;
+    private String  pendingRouteColorHex = null;
+    private boolean serverPaused        = false;
+    private int     serverSpeed         = 1;
+
     private static double TRACK_BUILD_COST()      { return GameConfig.get().trackBuildCost; }
-    private static double TRACK_NET_WORTH_GAIN() { return GameConfig.get().trackNetWorthGain; }
-    private static double STATION_BUILD_COST()   { return GameConfig.get().stationBuildCost; }
+    private static double TRACK_NET_WORTH_GAIN()  { return GameConfig.get().trackNetWorthGain; }
+    private static double STATION_BUILD_COST()    { return GameConfig.get().stationBuildCost; }
     private static double STATION_NET_WORTH_GAIN(){ return GameConfig.get().stationNetWorthGain; }
 
     private final SaveGameDao saveGameDao = new SaveGameDao();
-    private final StationDao stationDao = new StationDao();
-    private final TrackDao trackDao = new TrackDao();
-    private final RouteDao routeDao = new RouteDao();
-    private final TrainDao trainDao = new TrainDao();
-    private final EconomyDao economyDao = new EconomyDao();
+    private final StationDao  stationDao  = new StationDao();
+    private final TrackDao    trackDao    = new TrackDao();
+    private final RouteDao    routeDao    = new RouteDao();
+    private final TrainDao    trainDao    = new TrainDao();
+    private final EconomyDao  economyDao  = new EconomyDao();
 
     @FXML
     public void initialize() {
         DatabaseManager.initSchema();
-        world = new GameWorld();
+        world    = new GameWorld();
         colorGen = new ColorGenerator();
         gameView = new GameView(world);
 
@@ -105,7 +104,6 @@ public class GameController {
         gameView.heightProperty().addListener((obs, o, n) -> gameView.render());
         canvasContainer.getChildren().add(gameView);
 
-        // Callbacks für Track-Interaktion
         gameView.setTrackInteractionEnabled(true);
         gameView.setTrackDemolishCb(this::handleTrackDemolish);
         gameView.setRouteSegmentRedirectCb(this::handleRouteSegmentRedirect);
@@ -120,7 +118,6 @@ public class GameController {
             showToast(mode + " aktiv – ESC drücken, dann Route verschieben.", true);
         });
 
-        // --- HUD Bindings mit Währungsformatierung ---
         balanceLabel.textProperty().bind(Bindings.createStringBinding(
                 () -> formatCurrency(world.getEconomy().getBalance()),
                 world.getEconomy().balanceProperty()
@@ -133,20 +130,18 @@ public class GameController {
                 world.getEconomy().netWorthProperty()
         ));
 
-        // €/s Anzeige: throttled auf 2× pro Sekunde (EMA aus GameLoop)
         world.getEconomy().incomeRateProperty().addListener((obs, oldV, newV) -> {
             long now = System.currentTimeMillis();
             if (now - lastRateUiUpdate < 500) return;
             lastRateUiUpdate = now;
             updateIncomeRateLabel(newV.doubleValue());
         });
-        // --- Routen-Liste: Selektion → Karte Highlight ---
+
         routeListView.getSelectionModel().selectedItemProperty().addListener((obs, old, r) -> {
             gameView.setFocusedRoute(r);
             gameView.render();
         });
 
-        // --- Routen-Liste: erweitertes Layout ---
         routeListView.setItems(world.getRoutes());
         routeListView.setCellFactory(lv -> new ListCell<>() {
             @Override
@@ -158,18 +153,13 @@ public class GameController {
             @Override
             protected void updateItem(Route r, boolean empty) {
                 super.updateItem(r, empty);
-                if (empty || r == null) {
-                    setGraphic(null);
-                    setText(null);
-                    setStyle("");
-                    return;
-                }
+                if (empty || r == null) { setGraphic(null); setText(null); setStyle(""); return; }
 
                 VBox box = new VBox(3);
                 box.setStyle("-fx-background-color: transparent;");
 
                 String circIcon = r.isCircular() ? " ↺" : "";
-                String status = r.isActive() ? "" : "  [inaktiv]";
+                String status   = r.isActive()   ? "" : "  [inaktiv]";
                 Label header = new Label("● " + r + circIcon + status);
                 header.setStyle("-fx-text-fill: white; -fx-font-size: 13; -fx-font-weight: bold;");
                 box.getChildren().add(header);
@@ -186,7 +176,6 @@ public class GameController {
                     cl.setStyle("-fx-text-fill: #78909c; -fx-font-size: 10;");
                     box.getChildren().add(cl);
                 }
-
                 for (Train t : r.getTrains()) {
                     String dir = t.isForward() ? "→" : "←";
                     Label tl = new Label("  🚇 " + t.getType().name() + " " + dir);
@@ -196,21 +185,19 @@ public class GameController {
 
                 setGraphic(box);
                 setText(null);
-                boolean sel = isSelected();
-                String bgHex = r.getColorHex() + (sel ? "44" : "22");
-                String border = sel ? " -fx-border-color: transparent transparent transparent #6366f1;"
-                                      + " -fx-border-width: 0 0 0 3;" : "";
+                boolean sel   = isSelected();
+                String  bgHex = r.getColorHex() + (sel ? "44" : "22");
+                String  border = sel ? " -fx-border-color: transparent transparent transparent #6366f1;"
+                                       + " -fx-border-width: 0 0 0 3;" : "";
                 setStyle("-fx-background-color: " + bgHex + "; -fx-padding: 6 4 6 4;" + border);
             }
         });
 
-        // --- Züge-Liste: Selektion → Karte Highlight ---
         trainListView.getSelectionModel().selectedItemProperty().addListener((obs, old, t) -> {
             gameView.setSelectedTrain(t);
             gameView.render();
         });
 
-        // --- Züge-Liste: erweitertes Layout ---
         trainListView.setItems(world.getTrains());
         trainListView.setCellFactory(lv -> new ListCell<>() {
             @Override
@@ -222,12 +209,7 @@ public class GameController {
             @Override
             protected void updateItem(Train t, boolean empty) {
                 super.updateItem(t, empty);
-                if (empty || t == null) {
-                    setGraphic(null);
-                    setText(null);
-                    setStyle("");
-                    return;
-                }
+                if (empty || t == null) { setGraphic(null); setText(null); setStyle(""); return; }
 
                 String icon = switch (t.getType()) {
                     case STANDARD -> "🚃";
@@ -242,9 +224,9 @@ public class GameController {
                         + "  –  " + t.getType().capacity() + " Pl.");
                 typeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13; -fx-font-weight: bold;");
 
-                boolean hasRoute = t.getRoute() != null;
-                String routeTxt = hasRoute ? "  Route: " + t.getRoute() : "  ⚠ Keine Route zugewiesen";
-                Label routeLabel = new Label(routeTxt);
+                boolean hasRoute  = t.getRoute() != null;
+                String  routeTxt  = hasRoute ? "  Route: " + t.getRoute() : "  ⚠ Keine Route zugewiesen";
+                Label routeLabel  = new Label(routeTxt);
                 routeLabel.setStyle("-fx-text-fill: " + (hasRoute ? "#90a4ae" : "#ff7043")
                         + "; -fx-font-size: 11;");
 
@@ -252,7 +234,7 @@ public class GameController {
                 setGraphic(box);
                 setText(null);
                 boolean sel = isSelected();
-                String bg = hasRoute
+                String bg   = hasRoute
                         ? t.getRoute().getColorHex() + (sel ? "44" : "22")
                         : (sel ? "#3d4060" : "#2a2d38");
                 String border = sel ? " -fx-border-color: transparent transparent transparent #6366f1;"
@@ -267,7 +249,7 @@ public class GameController {
             if (scene != null) {
                 scene.setOnKeyPressed(e -> {
                     switch (e.getCode()) {
-                        case SPACE -> togglePause();
+                        case SPACE  -> togglePause();
                         case ESCAPE -> cancelBuildMode();
                         case DELETE -> deleteSelected();
                         case S -> {
@@ -300,14 +282,159 @@ public class GameController {
         });
         gameLoop.start();
 
-        // Initial satisfaction color
         updateSatisfactionColor(world.getSatisfaction().getValue());
         world.getSatisfaction().valueProperty().addListener((obs, o, n) ->
             updateSatisfactionColor(n.doubleValue())
         );
     }
 
-    // ─── Track-Interaktion ────────────────────────────────────────────────────
+    // ── Server-Modus: Einstieg & Updates ─────────────────────────────────────
+
+    public void initFromSnapshot(GameStateSnapshot snapshot, boolean isNewGame) {
+        serverMode = true;
+        gameLoop.setServerMode(true);
+
+        GameClient client = GameClient.get();
+        client.setOnSnapshot(this::applySnapshot);
+        client.setOnUpdate(this::applyUpdate);
+        client.setOnError(msg -> Platform.runLater(() -> showToast(msg, true)));
+        client.setOnNewStation(name -> Platform.runLater(() ->
+            showToast("Neuer Stadtteil: " + name + " fordert Anbindung!", true)));
+        client.setOnRankingResult(rank -> Platform.runLater(() -> {
+            showToast("Rang #" + rank + " in der Rangliste! 🏆", false);
+            PauseTransition delay = new PauseTransition(Duration.millis(2500));
+            delay.setOnFinished(e -> navigateToMenu());
+            delay.play();
+        }));
+
+        applySnapshot(snapshot);
+        
+        if (isNewGame) {
+            setupTutorial(false);
+        }
+    }
+
+    private void applySnapshot(GameStateSnapshot snap) {
+        world.getPassengers().clear();
+        world.getTrains().clear();
+        world.getRoutes().clear();
+        world.getTracks().clear();
+        world.getStations().clear();
+
+        Map<Integer, Station> stationMap = new HashMap<>();
+        for (StationDto dto : snap.stations) {
+            Station s = new Station(dto.id, dto.name, dto.x, dto.y);
+            s.setWaitingCount(dto.waitingCount);
+            s.setDemandingConnection(dto.demandingConnection);
+            world.getStations().add(s);
+            stationMap.put(dto.id, s);
+        }
+
+        for (TrackDto dto : snap.tracks) {
+            Station from = stationMap.get(dto.fromStationId);
+            Station to   = stationMap.get(dto.toStationId);
+            if (from != null && to != null) {
+                world.getTracks().add(new Track(dto.id, from, to));
+            }
+        }
+
+        Map<Integer, Route> routeMap = new HashMap<>();
+        for (RouteDto dto : snap.routes) {
+            Route r = new Route(dto.id, Color.web(dto.colorHex));
+            r.setName(dto.name);
+            r.setActive(dto.active);
+            r.setCircular(dto.circular);
+            for (int stopId : dto.stopIds) {
+                Station s = stationMap.get(stopId);
+                if (s != null) r.getStops().add(s);
+            }
+            world.getRoutes().add(r);
+            routeMap.put(dto.id, r);
+        }
+
+        for (TrainDto dto : snap.trains) {
+            TrainType type  = TrainType.valueOf(dto.type.name());
+            Train     train = new Train(dto.id, type);
+            Route     route = routeMap.get(dto.routeId);
+            if (route != null) {
+                train.setRoute(route);
+                route.getTrains().add(train);
+            }
+            train.setCurrentStopIndex(dto.currentStopIndex);
+            train.setPosition(dto.position);
+            train.setForward(dto.forward);
+            train.setPassengerCount(dto.passengerCount);
+            world.getTrains().add(train);
+        }
+
+        world.getEconomy().setBalance(snap.economy.balance);
+        world.getEconomy().setNetWorth(snap.economy.netWorth);
+        world.getEconomy().setIncomeRate(snap.economy.incomeRate);
+        world.getSatisfaction().valueProperty().set(snap.satisfaction);
+
+        // Route-Baumodus nach Snapshot wiederherstellen
+        if (buildMode == BuildMode.BUILD_ROUTE) {
+            if (pendingRouteColorHex != null) {
+                String hex = pendingRouteColorHex;
+                activeRoute = world.getRoutes().stream()
+                    .filter(r -> r.getColorHex().equalsIgnoreCase(hex))
+                    .findFirst().orElse(null);
+                if (activeRoute != null) {
+                    activeRouteId       = activeRoute.getId();
+                    pendingRouteColorHex = null;
+                    setStatus("Strecke anklicken → Route aufbauen.  ESC = Fertig.");
+                    showToast("Klicke auf eine Strecke, um die Route aufzubauen. ESC zum Abschließen.", false);
+                }
+            } else if (activeRouteId != -1) {
+                int id = activeRouteId;
+                activeRoute = world.getRoutes().stream()
+                    .filter(r -> r.getId() == id)
+                    .findFirst().orElse(null);
+            }
+            if (activeRoute != null) gameView.setActiveRouteHighlight(activeRoute);
+        }
+
+        routeListView.refresh();
+        trainListView.refresh();
+        gameView.render();
+    }
+
+    private void applyUpdate(GameStateUpdate update) {
+        world.getEconomy().setBalance(update.economy.balance);
+        world.getEconomy().setNetWorth(update.economy.netWorth);
+        world.getEconomy().setIncomeRate(update.economy.incomeRate);
+        world.getSatisfaction().valueProperty().set(update.satisfaction);
+
+        for (GameStateUpdate.TrainPosition tp : update.trainPositions) {
+            for (Train t : world.getTrains()) {
+                if (t.getId() == tp.trainId) {
+                    t.setCurrentStopIndex(tp.stopIndex);
+                    t.setPosition(tp.position);
+                    t.setForward(tp.forward);
+                    t.setPassengerCount(tp.passengerCount);
+                    break;
+                }
+            }
+        }
+
+        for (GameStateUpdate.StationWaiting sw : update.stationWaiting) {
+            for (Station s : world.getStations()) {
+                if (s.getId() == sw.stationId) {
+                    s.setWaitingCount(sw.waitingCount);
+                    break;
+                }
+            }
+        }
+
+        gameView.render();
+    }
+
+    private void sendCmd(GameCommand cmd) {
+        try { GameClient.get().send(cmd); }
+        catch (Exception e) { showToast("Verbindungsfehler: " + e.getMessage(), true); }
+    }
+
+    // ── Track-Interaktion ────────────────────────────────────────────────────
 
     private void handleTrackDemolish(Track track) {
         if (buildMode != BuildMode.NONE) return;
@@ -323,16 +450,19 @@ public class GameController {
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
                 .ifPresent(r -> {
-                    world.getTracks().remove(track);
-                    world.getEconomy().addNetWorth(-TRACK_BUILD_COST());
-                    if (world.getCurrentSave() != null) trackDao.delete(track.getId());
-                    showToast("Strecke abgerissen.", false);
-                    gameView.render();
+                    if (serverMode) {
+                        sendCmd(new DemolishTrackCommand(GameClient.get().getPlayerUuid(), track.getId()));
+                    } else {
+                        world.getTracks().remove(track);
+                        world.getEconomy().addNetWorth(-TRACK_BUILD_COST());
+                        if (world.getCurrentSave() != null) trackDao.delete(track.getId());
+                        showToast("Strecke abgerissen.", false);
+                        gameView.render();
+                    }
                 });
     }
 
     private void handleStationDemolish(Station station) {
-        // Verbundene Strecken zählen für Info-Text
         long trackCount = world.getTracks().stream()
                 .filter(t -> t.getFrom() == station || t.getTo() == station).count();
         String extra = trackCount > 0
@@ -348,36 +478,37 @@ public class GameController {
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
                 .ifPresent(r -> {
-                    // Wartende Passagiere entfernen
-                    world.getPassengers().removeAll(station.getWaitingPassengers());
-                    station.getWaitingPassengers().clear();
+                    if (serverMode) {
+                        sendCmd(new DemolishStationCommand(GameClient.get().getPlayerUuid(), station.getId()));
+                    } else {
+                        world.getPassengers().removeAll(station.getWaitingPassengers());
+                        station.getWaitingPassengers().clear();
 
-                    // Station aus allen Routen entfernen, Zug-Indizes anpassen
-                    for (Route route : world.getRoutes()) {
-                        int removeIdx = route.getStops().indexOf(station);
-                        if (removeIdx >= 0) {
-                            route.getStops().remove(station);
-                            adjustTrainsAfterStopRemove(route, removeIdx);
+                        for (Route route : world.getRoutes()) {
+                            int removeIdx = route.getStops().indexOf(station);
+                            if (removeIdx >= 0) {
+                                route.getStops().remove(station);
+                                adjustTrainsAfterStopRemove(route, removeIdx);
+                            }
                         }
+
+                        List<Track> toRemove = world.getTracks().stream()
+                                .filter(t -> t.getFrom() == station || t.getTo() == station)
+                                .toList();
+                        for (Track t : toRemove) {
+                            world.getTracks().remove(t);
+                            if (world.getCurrentSave() != null) trackDao.delete(t.getId());
+                        }
+
+                        world.getStations().remove(station);
+                        world.getEconomy().addNetWorth(-STATION_BUILD_COST());
+                        if (world.getCurrentSave() != null) stationDao.delete(station.getId());
+
+                        routeListView.refresh();
+                        trainListView.refresh();
+                        showToast("Station abgerissen.", false);
+                        gameView.render();
                     }
-
-                    // Verbundene Strecken entfernen
-                    List<Track> toRemove = world.getTracks().stream()
-                            .filter(t -> t.getFrom() == station || t.getTo() == station)
-                            .toList();
-                    for (Track t : toRemove) {
-                        world.getTracks().remove(t);
-                        if (world.getCurrentSave() != null) trackDao.delete(t.getId());
-                    }
-
-                    world.getStations().remove(station);
-                    world.getEconomy().addNetWorth(-STATION_BUILD_COST());
-                    if (world.getCurrentSave() != null) stationDao.delete(station.getId());
-
-                    routeListView.refresh();
-                    trainListView.refresh();
-                    showToast("Station abgerissen.", false);
-                    gameView.render();
                 });
     }
 
@@ -394,18 +525,33 @@ public class GameController {
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
                 .ifPresent(r -> {
-                    int removeIdx = route.getStops().indexOf(nearest);
-                    route.getStops().remove(nearest);
-                    adjustTrainsAfterStopRemove(route, removeIdx);
-                    routeListView.refresh();
-                    gameView.render();
-                    showToast("Verbindung getrennt.", false);
+                    if (serverMode) {
+                        sendCmd(new RemoveRouteStopCommand(
+                            GameClient.get().getPlayerUuid(), route.getId(), nearest.getId()));
+                    } else {
+                        int removeIdx = route.getStops().indexOf(nearest);
+                        route.getStops().remove(nearest);
+                        adjustTrainsAfterStopRemove(route, removeIdx);
+                        routeListView.refresh();
+                        gameView.render();
+                        showToast("Verbindung getrennt.", false);
+                    }
                 });
     }
 
     private void handleRouteSegmentRedirect(Route route, Station stopA, Station stopB,
                                             int insertAfterIndex, Station newStation) {
         if (buildMode != BuildMode.NONE) return;
+
+        if (serverMode) {
+            sendCmd(new InsertRouteStopCommand(
+                GameClient.get().getPlayerUuid(),
+                route.getId(), stopA.getId(), stopB.getId(),
+                insertAfterIndex, newStation.getId()
+            ));
+            showToast("Station wird eingefügt...", false);
+            return;
+        }
 
         List<Station> stops = route.getStops();
 
@@ -424,9 +570,6 @@ public class GameController {
             return;
         }
 
-        // ── Alle In-Memory-Ops zuerst, DANN DB ──────────────────────────────
-        // Wichtig: kein DB-Aufruf zwischen den Schritten, sonst unterbricht
-        // eine RuntimeException die Kette und lässt den State inkonsistent.
         Track tA = null, tB = null;
         if (needA) {
             tA = new Track(world.nextTrackId(), stopA, newStation);
@@ -447,7 +590,6 @@ public class GameController {
         gameView.render();
         showToast("Station eingefügt" + (needed > 0 ? " – " + needed + " Strecke(n) gebaut." : "."), false);
 
-        // DB-Persistenz nachgelagert – Exception darf UI nicht stoppen
         if (world.getCurrentSave() != null) {
             int sid = world.getCurrentSave().getId();
             try {
@@ -467,10 +609,6 @@ public class GameController {
         return false;
     }
 
-    /**
-     * Verteilt alle Züge einer Route gleichmäßig auf zufällig versetzte Stops,
-     * abwechselnd vor-/rückwärts, um Überlappungen zu vermeiden.
-     */
     private void spawnNewTrainOnRoute(Train newTrain, Route route) {
         List<Station> stops = route.getStops();
         if (stops.size() < 2) {
@@ -532,7 +670,7 @@ public class GameController {
         }
     }
 
-    // ─── BuildMode-Verwaltung ─────────────────────────────────────────────────
+    // ── BuildMode-Verwaltung ──────────────────────────────────────────────────
 
     private void setBuildMode(BuildMode mode) {
         buildMode = mode;
@@ -542,7 +680,7 @@ public class GameController {
         if (buildRouteBtn   != null) buildRouteBtn.setSelected(mode == BuildMode.BUILD_ROUTE);
     }
 
-    // ─── Toast-System ────────────────────────────────────────────────────────
+    // ── Toast-System ─────────────────────────────────────────────────────────
 
     private void initToastSystem() {
         toastContainer = new VBox(8);
@@ -583,7 +721,7 @@ public class GameController {
         pause.play();
     }
 
-    // ─── Zug-Shop Overlay ────────────────────────────────────────────────────
+    // ── Zug-Shop Overlay ─────────────────────────────────────────────────────
 
     @FXML
     public void onBuyTrain() {
@@ -625,7 +763,7 @@ public class GameController {
             case SUPER    -> "🚄";
             case DELUXE   -> "🚅";
         };
-        String baseStyle = "-fx-background-color: #2a2d38; -fx-background-radius: 14;" +
+        String baseStyle  = "-fx-background-color: #2a2d38; -fx-background-radius: 14;" +
                 " -fx-padding: 26 22 26 22;" +
                 " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);";
         String hoverStyle = "-fx-background-color: #353a4d; -fx-background-radius: 14;" +
@@ -639,11 +777,11 @@ public class GameController {
         card.setOnMouseEntered(e -> card.setStyle(hoverStyle));
         card.setOnMouseExited(e -> card.setStyle(baseStyle));
 
-        Label iconLbl = new Label(icon);
+        Label iconLbl  = new Label(icon);
         iconLbl.setStyle("-fx-font-size: 44;");
-        Label nameLbl = new Label(type.name());
+        Label nameLbl  = new Label(type.name());
         nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 17; -fx-font-weight: bold;");
-        Label capLbl = new Label(type.capacity() + " Plätze");
+        Label capLbl   = new Label(type.capacity() + " Plätze");
         capLbl.setStyle("-fx-text-fill: #90a4ae; -fx-font-size: 13;");
         Label priceLbl = new Label(formatCurrency(type.buyCost()));
         priceLbl.setStyle("-fx-text-fill: #4fc3f7; -fx-font-size: 15; -fx-font-weight: bold;");
@@ -659,10 +797,18 @@ public class GameController {
         );
         buyBtn.setOnAction(e -> {
             closeTrainShop();
-            Train train = new Train(world.nextTrainId(), type);
-            world.getTrains().add(train);
-            world.getEconomy().addBalance(-type.buyCost());
-            showToast(type.name() + " gekauft! Im Züge-Tab Route zuweisen.", false);
+            if (serverMode) {
+                sendCmd(new BuyTrainCommand(
+                    GameClient.get().getPlayerUuid(),
+                    at.htl.afterfall.protocol.TrainType.valueOf(type.name())
+                ));
+                showToast(type.name() + " bestellt...", false);
+            } else {
+                Train train = new Train(world.nextTrainId(), type);
+                world.getTrains().add(train);
+                world.getEconomy().addBalance(-type.buyCost());
+                showToast(type.name() + " gekauft! Im Züge-Tab Route zuweisen.", false);
+            }
         });
 
         card.getChildren().addAll(iconLbl, nameLbl, capLbl, priceLbl, buyBtn);
@@ -676,14 +822,14 @@ public class GameController {
         }
     }
 
-    // ─── Satisfaction Color ───────────────────────────────────────────────────
+    // ── Satisfaction Color ────────────────────────────────────────────────────
 
     private void updateSatisfactionColor(double v) {
         String color = v >= 70 ? "#69f0ae" : v >= 40 ? "#ffd54f" : "#ff5252";
         satisfactionLabel.setStyle("-fx-text-fill: " + color + ";");
     }
 
-    // ─── €/s Label Update ─────────────────────────────────────────────────────
+    // ── €/s Label Update ──────────────────────────────────────────────────────
 
     private void updateIncomeRateLabel(double rate) {
         if (Math.abs(rate) < 0.05) {
@@ -699,14 +845,14 @@ public class GameController {
     }
 
     private static String formatRate(double rate) {
-        double abs = Math.abs(rate);
+        double abs  = Math.abs(rate);
         String sign = rate < 0 ? "-" : "";
         if (abs >= 1_000) return sign + String.format("%.1fk", abs / 1_000);
-        if (abs >= 10) return sign + String.format("%.0f", abs);
+        if (abs >= 10)    return sign + String.format("%.0f", abs);
         return sign + String.format("%.1f", abs);
     }
 
-    // ─── Währungsformatierung ─────────────────────────────────────────────────
+    // ── Währungsformatierung ──────────────────────────────────────────────────
 
     private static String formatCurrency(double amount) {
         double abs = Math.abs(amount);
@@ -724,14 +870,16 @@ public class GameController {
         return String.format("%.2f €", amount);
     }
 
-    // ─── Tutorial ─────────────────────────────────────────────────────────────
+    // ── Tutorial ──────────────────────────────────────────────────────────────
 
-    private void setupTutorial() {
-        Station s1 = new Station(world.nextStationId(), "Hauptbahnhof", -200, 0);
-        Station s2 = new Station(world.nextStationId(), "Stadtzentrum", 200, 0);
-        world.getStations().addAll(s1, s2);
-        Train startTrain = new Train(world.nextTrainId(), TrainType.STANDARD);
-        world.getTrains().add(startTrain);
+    private void setupTutorial(boolean seedEntities) {
+        if (seedEntities) {
+            Station s1 = new Station(world.nextStationId(), "Hauptbahnhof", -200, 0);
+            Station s2 = new Station(world.nextStationId(), "Stadtzentrum", 200, 0);
+            world.getStations().addAll(s1, s2);
+            Train startTrain = new Train(world.nextTrainId(), TrainType.STANDARD);
+            world.getTrains().add(startTrain);
+        }
 
         tutorialManager = new TutorialManager();
         tutorialOverlay = new TutorialOverlay(tutorialManager, this::advanceTutorial, this::skipTutorial);
@@ -740,15 +888,12 @@ public class GameController {
         tutorialTimer = new Timeline(new KeyFrame(Duration.millis(500), e -> checkTutorial()));
         tutorialTimer.setCycleCount(Timeline.INDEFINITE);
         tutorialTimer.play();
-
-        gameView.render();
     }
 
     private void checkTutorial() {
         if (tutorialManager == null || !tutorialManager.isActive()) return;
         if (tutorialManager.check(world)) {
             tutorialOverlay.refresh();
-            // Kurz zeigen dann automatisch weiter
             PauseTransition delay = new PauseTransition(Duration.millis(900));
             delay.setOnFinished(e -> advanceTutorial());
             delay.play();
@@ -767,13 +912,13 @@ public class GameController {
         tutorialTimer.stop();
     }
 
-    // ─── Canvas-Klick ─────────────────────────────────────────────────────────
+    // ── Canvas-Klick ──────────────────────────────────────────────────────────
 
     private void handleCanvasClick(double wx, double wy) {
         switch (buildMode) {
             case BUILD_STATION -> placeStation(wx, wy);
-            case BUILD_TRACK -> selectStationForTrack(wx, wy);
-            case BUILD_ROUTE -> addStationToRoute(wx, wy);
+            case BUILD_TRACK   -> selectStationForTrack(wx, wy);
+            case BUILD_ROUTE   -> addStationToRoute(wx, wy);
             case NONE -> {
                 Station clicked = gameView.findStationAt(wx, wy);
                 if (clicked != null) handleStationDemolish(clicked);
@@ -789,6 +934,12 @@ public class GameController {
         String name = askInput("Station benennen", "Name:",
                 "Station " + (world.getStations().size() + 1));
         if (name == null || name.isBlank()) return;
+
+        if (serverMode) {
+            sendCmd(new BuildStationCommand(GameClient.get().getPlayerUuid(), wx, wy, name));
+            return;
+        }
+
         Station s = new Station(world.nextStationId(), name, wx, wy);
         world.getStations().add(s);
         world.getEconomy().addBalance(-STATION_BUILD_COST());
@@ -820,6 +971,12 @@ public class GameController {
             showToast("Im Minus können keine Strecken gebaut werden.", true);
             return;
         }
+
+        if (serverMode) {
+            sendCmd(new BuildTrackCommand(GameClient.get().getPlayerUuid(), from.getId(), to.getId()));
+            return;
+        }
+
         Track t = new Track(world.nextTrackId(), from, to);
         world.getTracks().add(t);
         world.getEconomy().addBalance(-TRACK_BUILD_COST());
@@ -834,6 +991,25 @@ public class GameController {
     private void addStationToRoute(double wx, double wy) {
         if (activeRoute == null) return;
 
+        if (serverMode) {
+            if (activeRouteId == -1) {
+                showToast("Warte auf Server-Bestätigung...", false);
+                return;
+            }
+            Track clickedTrack = gameView.findTrackAt(wx, wy);
+            if (clickedTrack == null) {
+                showToast("Klicke auf eine Strecke, um sie zur Route hinzuzufügen.", true);
+                return;
+            }
+            sendCmd(new AddRouteStopCommand(
+                GameClient.get().getPlayerUuid(),
+                activeRouteId,
+                clickedTrack.getFrom().getId(),
+                clickedTrack.getTo().getId()
+            ));
+            return;
+        }
+
         Track clickedTrack = gameView.findTrackAt(wx, wy);
         if (clickedTrack == null) {
             showToast("Klicke auf eine Strecke, um sie zur Route hinzuzufügen.", true);
@@ -845,7 +1021,6 @@ public class GameController {
         List<Station> stops = activeRoute.getStops();
 
         if (stops.isEmpty()) {
-            // Erste Strecke: Route jetzt erst zur Welt hinzufügen
             if (!world.getRoutes().contains(activeRoute)) {
                 activeRoute.setName("Linie " + (world.getRoutes().size() + 1));
                 world.getRoutes().add(activeRoute);
@@ -860,7 +1035,6 @@ public class GameController {
 
         Station lastStop = stops.getLast();
 
-        // Strecke muss am letzten Halt ansetzen
         Station nextStop;
         if (trackA == lastStop)      nextStop = trackB;
         else if (trackB == lastStop) nextStop = trackA;
@@ -869,7 +1043,6 @@ public class GameController {
             return;
         }
 
-        // Ersten Halt nochmal → Kreis schließen
         if (nextStop == stops.getFirst() && stops.size() >= 2) {
             if (!activeRoute.isCircular()) {
                 activeRoute.setCircular(true);
@@ -894,7 +1067,7 @@ public class GameController {
         gameView.render();
     }
 
-    // ─── Toolbar-Aktionen ─────────────────────────────────────────────────────
+    // ── Toolbar-Aktionen ──────────────────────────────────────────────────────
 
     @FXML
     public void onPause() {
@@ -902,20 +1075,38 @@ public class GameController {
     }
 
     private void togglePause() {
-        gameLoop.togglePause();
-        pauseButton.setText(gameLoop.isPaused() ? "▶  Weiter" : "⏸  Pause");
+        if (serverMode) {
+            serverPaused = !serverPaused;
+            sendCmd(new PauseCommand(GameClient.get().getPlayerUuid(), serverPaused));
+            pauseButton.setText(serverPaused ? "▶  Weiter" : "⏸  Pause");
+        } else {
+            gameLoop.togglePause();
+            pauseButton.setText(gameLoop.isPaused() ? "▶  Weiter" : "⏸  Pause");
+        }
     }
 
     @FXML
     public void onSpeedToggle() {
-        int next = gameLoop.getSpeedMultiplier() % 3 + 1;  // 1→2→3→1
-        gameLoop.setSpeedMultiplier(next);
-        speedButton.setText("▶▶  " + next + "×");
-        speedButton.setStyle(next > 1
-                ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
-                  + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
-                  + " -fx-padding: 7 16 7 16;"
-                : "");
+        if (serverMode) {
+            serverSpeed = serverSpeed % 3 + 1;
+            sendCmd(new SetSpeedCommand(GameClient.get().getPlayerUuid(), serverSpeed));
+            gameLoop.setSpeedMultiplier(serverSpeed);
+            speedButton.setText("▶▶  " + serverSpeed + "×");
+            speedButton.setStyle(serverSpeed > 1
+                    ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
+                      + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
+                      + " -fx-padding: 7 16 7 16;"
+                    : "");
+        } else {
+            int next = gameLoop.getSpeedMultiplier() % 3 + 1;
+            gameLoop.setSpeedMultiplier(next);
+            speedButton.setText("▶▶  " + next + "×");
+            speedButton.setStyle(next > 1
+                    ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
+                      + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
+                      + " -fx-padding: 7 16 7 16;"
+                    : "");
+        }
     }
 
     @FXML
@@ -943,7 +1134,8 @@ public class GameController {
             showToast("Bitte zuerst eine Route in der Liste auswählen.", true);
             return;
         }
-        activeRoute = selected;
+        activeRoute    = selected;
+        activeRouteId  = selected.getId();
         setBuildMode(BuildMode.BUILD_ROUTE);
         setStatus("Bearbeite: " + selected + "  |  ESC = Fertig.");
         gameView.setActiveRouteHighlight(selected);
@@ -960,7 +1152,11 @@ public class GameController {
         dlg.setTitle("Route umbenennen");
         dlg.setHeaderText("Neuer Name:");
         dlg.showAndWait().ifPresent(name -> {
-            if (!name.isBlank()) {
+            if (name.isBlank()) return;
+            if (serverMode) {
+                sendCmd(new RenameRouteCommand(
+                    GameClient.get().getPlayerUuid(), selected.getId(), name.strip()));
+            } else {
                 selected.setName(name.strip());
                 if (world.getCurrentSave() != null)
                     routeDao.updateName(selected.getId(), name.strip());
@@ -973,21 +1169,29 @@ public class GameController {
     public void onToggleRoute() {
         Route selected = routeListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        selected.setActive(!selected.isActive());
-        routeListView.refresh();
-        gameView.render();
+        if (serverMode) {
+            sendCmd(new ToggleRouteCommand(GameClient.get().getPlayerUuid(), selected.getId()));
+        } else {
+            selected.setActive(!selected.isActive());
+            routeListView.refresh();
+            gameView.render();
+        }
     }
 
     @FXML
     public void onDeleteRoute() {
         Route selected = routeListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        for (Train t : selected.getTrains()) t.setRoute(null);
-        selected.getTrains().clear();
-        world.getRoutes().remove(selected);
-        if (world.getCurrentSave() != null) routeDao.delete(selected.getId());
-        trainListView.refresh();
-        gameView.render();
+        if (serverMode) {
+            sendCmd(new DeleteRouteCommand(GameClient.get().getPlayerUuid(), selected.getId()));
+        } else {
+            for (Train t : selected.getTrains()) t.setRoute(null);
+            selected.getTrains().clear();
+            world.getRoutes().remove(selected);
+            if (world.getCurrentSave() != null) routeDao.delete(selected.getId());
+            trainListView.refresh();
+            gameView.render();
+        }
     }
 
     @FXML
@@ -1002,12 +1206,17 @@ public class GameController {
         dlg.setTitle("Route zuweisen");
         dlg.setHeaderText("Route für diesen Zug:");
         dlg.showAndWait().ifPresent(route -> {
-            if (selected.getRoute() != null) selected.getRoute().getTrains().remove(selected);
-            selected.setRoute(route);
-            route.getTrains().add(selected);
-            spawnNewTrainOnRoute(selected, route);
-            trainListView.refresh();
-            routeListView.refresh();
+            if (serverMode) {
+                sendCmd(new AssignTrainCommand(
+                    GameClient.get().getPlayerUuid(), selected.getId(), route.getId()));
+            } else {
+                if (selected.getRoute() != null) selected.getRoute().getTrains().remove(selected);
+                selected.setRoute(route);
+                route.getTrains().add(selected);
+                spawnNewTrainOnRoute(selected, route);
+                trainListView.refresh();
+                routeListView.refresh();
+            }
         });
     }
 
@@ -1015,30 +1224,38 @@ public class GameController {
     public void onUnassignTrain() {
         Train selected = trainListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        if (selected.getRoute() != null) {
-            selected.getRoute().getTrains().remove(selected);
-            selected.setRoute(null);
+        if (serverMode) {
+            sendCmd(new UnassignTrainCommand(GameClient.get().getPlayerUuid(), selected.getId()));
+        } else {
+            if (selected.getRoute() != null) {
+                selected.getRoute().getTrains().remove(selected);
+                selected.setRoute(null);
+            }
+            trainListView.refresh();
+            routeListView.refresh();
         }
-        trainListView.refresh();
-        routeListView.refresh();
     }
 
     @FXML
     public void onSellTrain() {
         Train selected = trainListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        if (selected.getRoute() != null) {
-            selected.getRoute().getTrains().remove(selected);
-            selected.setRoute(null);
+        if (serverMode) {
+            sendCmd(new SellTrainCommand(GameClient.get().getPlayerUuid(), selected.getId()));
+        } else {
+            if (selected.getRoute() != null) {
+                selected.getRoute().getTrains().remove(selected);
+                selected.setRoute(null);
+            }
+            world.getTrains().remove(selected);
+            double refund = selected.getType().buyCost() * 0.5;
+            world.getEconomy().addBalance(refund);
+            if (world.getCurrentSave() != null) trainDao.delete(selected.getId());
+            showToast("Zug verkauft. Rückgabe: " + formatCurrency(refund), false);
         }
-        world.getTrains().remove(selected);
-        double refund = selected.getType().buyCost() * 0.5;
-        world.getEconomy().addBalance(refund);
-        if (world.getCurrentSave() != null) trainDao.delete(selected.getId());
-        showToast("Zug verkauft. Rückgabe: " + formatCurrency(refund), false);
     }
 
-    // ─── Hilfsmethoden ───────────────────────────────────────────────────────
+    // ── Hilfsmethoden ────────────────────────────────────────────────────────
 
     private void activateBuildStation() {
         setBuildMode(BuildMode.BUILD_STATION);
@@ -1053,12 +1270,23 @@ public class GameController {
 
     private void activateBuildRoute() {
         Color color = colorGen.generateRouteColor();
-        Route route = new Route(world.nextRouteId(), color);
-        activeRoute  = route;
-        setBuildMode(BuildMode.BUILD_ROUTE); // setzt buildRouteBtn.selected=true
-        setStatus("Strecke anklicken → Route aufbauen.  ESC = Fertig.");
-        gameView.setActiveRouteHighlight(route);
-        showToast("Klicke auf eine Strecke, um die Route aufzubauen. ESC zum Abschließen.", false);
+        if (serverMode) {
+            Route localRoute = new Route(-1, color);
+            pendingRouteColorHex = localRoute.getColorHex().toLowerCase();
+            activeRoute  = localRoute;
+            activeRouteId = -1;
+            setBuildMode(BuildMode.BUILD_ROUTE);
+            setStatus("Warte auf Server...");
+            gameView.setActiveRouteHighlight(localRoute);
+            sendCmd(new CreateRouteCommand(GameClient.get().getPlayerUuid(), localRoute.getColorHex()));
+        } else {
+            Route route = new Route(world.nextRouteId(), color);
+            activeRoute  = route;
+            setBuildMode(BuildMode.BUILD_ROUTE);
+            setStatus("Strecke anklicken → Route aufbauen.  ESC = Fertig.");
+            gameView.setActiveRouteHighlight(route);
+            showToast("Klicke auf eine Strecke, um die Route aufzubauen. ESC zum Abschließen.", false);
+        }
     }
 
     private void cancelBuildMode() {
@@ -1066,9 +1294,11 @@ public class GameController {
             closeTrainShop();
             return;
         }
-        setBuildMode(BuildMode.NONE); // deselektiert automatisch alle Buttons
-        activeRoute = null;
-        trackStart = null;
+        setBuildMode(BuildMode.NONE);
+        activeRoute          = null;
+        activeRouteId        = -1;
+        pendingRouteColorHex = null;
+        trackStart           = null;
         gameView.setHighlightStation(null);
         gameView.setActiveRouteHighlight(null);
         gameView.setFocusedRoute(null);
@@ -1083,11 +1313,11 @@ public class GameController {
         // TODO: selection + delete implementieren
     }
 
-    // ─── Öffentliche Einstiegspunkte (aufgerufen von MainController) ─────────
+    // ── Öffentliche Einstiegspunkte ───────────────────────────────────────────
 
     public void startNewGame(SaveGame save) {
         world.setCurrentSave(save);
-        setupTutorial();
+        setupTutorial(true);
     }
 
     public void loadGame(SaveGame save) {
@@ -1127,27 +1357,44 @@ public class GameController {
         gameView.render();
     }
 
-    // ─── Speichern ───────────────────────────────────────────────────────────
+    // ── Speichern ─────────────────────────────────────────────────────────────
 
     private void saveGameToDB() {
         if (world.getCurrentSave() == null) return;
         int id = world.getCurrentSave().getId();
+        try {
+            var conn = at.htl.afterfall.persistence.DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+            try {
+                trainDao.deleteAllBySaveId(id);
+                routeDao.deleteAllBySaveId(id);
+                trackDao.deleteAllBySaveId(id);
+                stationDao.deleteAllBySaveId(id);
 
-        trainDao.deleteAllBySaveId(id);
-        routeDao.deleteAllBySaveId(id);
-        trackDao.deleteAllBySaveId(id);
-        stationDao.deleteAllBySaveId(id);
+                for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
+                for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
+                for (Route r   : world.getRoutes())   routeDao.insert(id, r);
+                for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
 
-        for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
-        for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
-        for (Route r   : world.getRoutes())   routeDao.insert(id, r);
-        for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
-
-        economyDao.save(id, world.getEconomy(), world.getSatisfaction());
-        saveGameDao.updateLastSaved(id);
+                economyDao.save(id, world.getEconomy(), world.getSatisfaction());
+                saveGameDao.updateLastSaved(id);
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            showToast("Fehler beim Speichern: " + e.getMessage(), true);
+        }
     }
 
     private void saveGame() {
+        if (serverMode) {
+            showToast("Spielstand wird automatisch gespeichert.", false);
+            return;
+        }
         if (world.getCurrentSave() == null) return;
         saveGameToDB();
         RankingClient.submitScore(
@@ -1158,27 +1405,38 @@ public class GameController {
         showToast("Spielstand gespeichert.", false);
     }
 
-    // ─── Zurück zum Hauptmenü ────────────────────────────────────────────────
+    // ── Zurück zum Hauptmenü ──────────────────────────────────────────────────
 
     @FXML
     public void onMainMenu() {
         gameLoop.stop();
-        saveGameToDB();
-        double netWorth = world.getEconomy().getNetWorth();
-        RankingClient.submitScore(
-            netWorth,
-            rank -> { showToast("Rang #" + rank + " in der Rangliste! 🏆", false); navigateToMenu(); },
-            ()   -> { showToast("Rangliste nicht erreichbar.", true); navigateToMenu(); }
-        );
+        if (serverMode) {
+            try {
+                GameClient.get().send(new QuitGameCommand(GameClient.get().getPlayerUuid()));
+            } catch (Exception e) {
+                showToast("Verbindungsfehler – Kehre zum Menü zurück.", true);
+                navigateToMenu();
+            }
+        } else {
+            saveGameToDB();
+            double netWorth = world.getEconomy().getNetWorth();
+            RankingClient.submitScore(
+                netWorth,
+                rank -> { showToast("Rang #" + rank + " in der Rangliste! 🏆", false); navigateToMenu(); },
+                ()   -> { showToast("Rangliste nicht erreichbar.", true); navigateToMenu(); }
+            );
+        }
     }
 
     private void navigateToMenu() {
         try {
             FXMLLoader loader = new FXMLLoader(MainApp.class.getResource("view/main.fxml"));
-            Scene menuScene = new Scene(loader.load(), 900, 700);
+            Scene menuScene = new Scene(loader.load(), 1000, 800);
             Stage stage = (Stage) canvasContainer.getScene().getWindow();
-            stage.setMaximized(true);
+            stage.setMaximized(false);
             stage.setScene(menuScene);
+            stage.setWidth(1000);
+            stage.setHeight(800);
         } catch (IOException e) {
             showToast("Fehler beim Öffnen des Menüs.", true);
         }
@@ -1202,7 +1460,7 @@ public class GameController {
         return dlg.showAndWait().orElse(null);
     }
 
-    // ─── Zug-Index-Anpassung bei Route-Änderungen ────────────────────────────
+    // ── Zug-Index-Anpassung bei Route-Änderungen ─────────────────────────────
 
     private void adjustTrainsAfterStopInsert(Route route, int insertedIdx) {
         for (Train t : route.getTrains()) {
@@ -1213,8 +1471,8 @@ public class GameController {
     }
 
     private void adjustTrainsAfterStopRemove(Route route, int removedIdx) {
-        List<Station> stops = route.getStops(); // bereits ohne den entfernten Stop
-        if (stops.size() < 2) return;           // moveTrains() überspringt diese Route ohnehin
+        List<Station> stops = route.getStops();
+        if (stops.size() < 2) return;
         for (Train t : route.getTrains()) {
             int idx = t.getCurrentStopIndex();
             if (idx == removedIdx) {

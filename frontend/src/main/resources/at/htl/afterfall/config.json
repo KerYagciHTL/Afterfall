@@ -1,4 +1,8 @@
 {
+  "gameServer": {
+    "host": "localhost",
+    "port": 9090
+  },
   "economy": {
     "startingBalance":     10000,
     "startingNetWorth":    10000,

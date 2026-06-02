@@ -12,6 +12,7 @@
     <name>Afterfall Root Project</name>
 
     <modules>
+        <module>protocol</module>
         <module>backend</module>
         <module>frontend</module>
     </modules>
