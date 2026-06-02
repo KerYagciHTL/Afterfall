@@ -293,7 +293,7 @@ public class MainController {
                .ifPresent(r -> {
                    if (GameClient.get().isConnected()) {
                        try {
-                           GameClient.get().send(new at.htl.afterfall.protocol.command.DeleteRouteCommand(
+                           GameClient.get().send(new at.htl.afterfall.protocol.command.DeleteSaveCommand(
                                GameClient.get().getPlayerUuid(), selected.getId()));
                        } catch (Exception ignored) {}
                    } else {
