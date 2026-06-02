@@ -55,6 +55,9 @@ public class ClientHandler implements Runnable {
                 send(CommandResult.error("Bitte zuerst registrieren."));
             } else if (cmd instanceof ListSavesCommand) {
                 send(new SaveListResponse(saveRepo.listSaves(playerUuid)));
+            } else if (cmd instanceof DeleteSaveCommand dc) {
+                saveRepo.deleteSave(dc.saveId);
+                send(new SaveListResponse(saveRepo.listSaves(playerUuid)));
             } else if (cmd instanceof NewGameCommand nc) {
                 handleNewGame(nc);
             } else if (cmd instanceof LoadGameCommand lc) {
