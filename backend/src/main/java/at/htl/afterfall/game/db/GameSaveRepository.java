@@ -47,6 +47,11 @@ public class GameSaveRepository {
                 """, netWorth, uuid);
     }
 
+    public void deleteSave(int saveId) {
+        deleteWorldData(saveId);
+        jdbc.update("DELETE FROM game_saves WHERE id = ?", saveId);
+    }
+
     public List<SaveInfoDto> listSaves(String uuid) {
         return jdbc.query("""
                 SELECT id, name, created_at, last_saved FROM game_saves
