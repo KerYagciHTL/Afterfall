@@ -3,6 +3,7 @@ services:
     build: .
     ports:
       - "8080:8080"
+      - "9090:9090"
     environment:
       - RANKING_TOKEN=${RANKING_TOKEN}
       - DB_PATH=/data/ranking.db
