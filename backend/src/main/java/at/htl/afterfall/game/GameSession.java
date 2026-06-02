@@ -278,6 +278,8 @@ public class GameSession {
     public CommandResult handleCreateRoute(CreateRouteCommand cmd) {
         return run(() -> {
             ServerRoute r = new ServerRoute(world.nextRouteId(), cmd.colorHex);
+            r.setName("Linie " + (world.getRoutes().size() + 1));
+            world.getRoutes().add(r);
             return CommandResult.ok(buildSnapshot());
         });
     }
@@ -292,10 +294,6 @@ public class GameSession {
 
             List<ServerStation> stops = route.getStops();
             if (stops.isEmpty()) {
-                if (!world.getRoutes().contains(route)) {
-                    route.setName("Linie " + (world.getRoutes().size() + 1));
-                    world.getRoutes().add(route);
-                }
                 stops.add(stA);
                 stops.add(stB);
                 return CommandResult.ok(buildSnapshot());
