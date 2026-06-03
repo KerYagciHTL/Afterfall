@@ -121,7 +121,9 @@ public class GameClient {
             } else if (r.config != null) {
                 GameConfig.applyFromServer(r.config);
             }
-        } else if (obj instanceof GameStateUpdate u && onUpdate != null)
+        } else if (obj instanceof GameStateSnapshot s && onSnapshot != null)
+            Platform.runLater(() -> onSnapshot.accept(s));
+        else if (obj instanceof GameStateUpdate u && onUpdate != null)
             Platform.runLater(() -> onUpdate.accept(u));
         else if (obj instanceof CommandResult r) {
             if (r.success && r.state != null && onSnapshot != null)
