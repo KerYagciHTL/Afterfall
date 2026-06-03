@@ -1,6 +1,6 @@
 {
   "gameServer": {
-    "host": "localhost",
+    "host": "api.yagci.cc",
     "port": 9090
   },
   "economy": {
