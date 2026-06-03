@@ -30,6 +30,7 @@ replay_pid*
 ## Lokale Konfigurationen / Secrets
 .env
 .env.*
+!.env.example
 local.properties
 *.local
 
