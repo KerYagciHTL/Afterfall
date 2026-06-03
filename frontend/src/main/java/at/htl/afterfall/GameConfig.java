@@ -1,6 +1,7 @@
 package at.htl.afterfall;
 
 import at.htl.afterfall.model.TrainType;
+import at.htl.afterfall.protocol.dto.GameConfigDto;
 import org.json.JSONObject;
 
 import java.util.EnumMap;
@@ -10,51 +11,44 @@ public class GameConfig {
 
     private static volatile GameConfig instance;
 
-    // ── Game Server ───────────────────────────────────────────────────────────
     public final String gameServerHost;
     public final int    gameServerPort;
 
-    // ── Economy ───────────────────────────────────────────────────────────────
-    public final double startingBalance;
-    public final double startingNetWorth;
-    public final double stationBuildCost;
-    public final double stationNetWorthGain;
-    public final double trackBuildCost;
-    public final double trackNetWorthGain;
+    public double startingBalance;
+    public double startingNetWorth;
 
-    // ── Trains ────────────────────────────────────────────────────────────────
+    public double stationBuildCost;
+    public double stationNetWorthGain;
+    public double trackBuildCost;
+    public double trackNetWorthGain;
+
     public record TrainSpec(int capacity, double speedFactor, double buyCost, double opCostPerKm) {}
     private final Map<TrainType, TrainSpec> trainSpecs;
 
-    // ── Passenger Simulation ──────────────────────────────────────────────────
-    public final double baseSpawnInterval;
-    public final double farePerPx;
-    public final double minFare;
-    public final double trainBaseSpeed;
-    public final double spawnChanceDivisor;
-    public final double minSatModifier;
+    public double baseSpawnInterval;
+    public double farePerPx;
+    public double minFare;
+    public double trainBaseSpeed;
+    public double spawnChanceDivisor;
+    public double minSatModifier;
 
-    // ── City Growth ───────────────────────────────────────────────────────────
-    public final double cityInitialDelay;
-    public final double cityMinInterval;
-    public final double cityMaxInterval;
-    public final double cityMinStationDist;
-    public final double citySpawnRadiusMin;
-    public final double citySpawnRadiusMax;
+    public double cityInitialDelay;
+    public double cityMinInterval;
+    public double cityMaxInterval;
+    public double cityMinStationDist;
+    public double citySpawnRadiusMin;
+    public double citySpawnRadiusMax;
 
-    // ── Satisfaction ──────────────────────────────────────────────────────────
-    public final double satInitial;
-    public final double satMaxWait;
-    public final double satUpdateInterval;
-    public final double satBaseTarget;
-    public final double satConnWeight;
-    public final double satDeliveryWeight;
-    public final double satWaitPenalty;
-    public final double satEmptyPenalty;
-    public final double satRiseRate;
-    public final double satFallRate;
-
-    // ── API ───────────────────────────────────────────────────────────────────
+    public double satInitial;
+    public double satMaxWait;
+    public double satUpdateInterval;
+    public double satBaseTarget;
+    public double satConnWeight;
+    public double satDeliveryWeight;
+    public double satWaitPenalty;
+    public double satEmptyPenalty;
+    public double satRiseRate;
+    public double satFallRate;
 
     public static GameConfig get() {
         if (instance == null) {
@@ -67,14 +61,44 @@ public class GameConfig {
 
     public TrainSpec trainSpec(TrainType t) { return trainSpecs.get(t); }
 
-    // ── Loader ────────────────────────────────────────────────────────────────
+    public static void applyFromServer(GameConfigDto dto) {
+        GameConfig c = get();
+        c.stationBuildCost    = dto.stationBuildCost;
+        c.stationNetWorthGain = dto.stationNetWorthGain;
+        c.trackBuildCost      = dto.trackBuildCost;
+        c.trackNetWorthGain   = dto.trackNetWorthGain;
+        c.trainBaseSpeed      = dto.trainBaseSpeed;
+        c.farePerPx           = dto.farePerPx;
+        c.minFare             = dto.minFare;
+        c.baseSpawnInterval   = dto.baseSpawnInterval;
+        c.spawnChanceDivisor  = dto.spawnChanceDivisor;
+        c.minSatModifier      = dto.minSatModifier;
+        c.cityInitialDelay    = dto.cityInitialDelay;
+        c.cityMinInterval     = dto.cityMinInterval;
+        c.cityMaxInterval     = dto.cityMaxInterval;
+        c.cityMinStationDist  = dto.cityMinStationDist;
+        c.citySpawnRadiusMin  = dto.citySpawnRadiusMin;
+        c.citySpawnRadiusMax  = dto.citySpawnRadiusMax;
+        c.satInitial          = dto.satInitial;
+        c.satMaxWait          = dto.satMaxWait;
+        c.satUpdateInterval   = dto.satUpdateInterval;
+        c.satBaseTarget       = dto.satBaseTarget;
+        c.satConnWeight       = dto.satConnWeight;
+        c.satDeliveryWeight   = dto.satDeliveryWeight;
+        c.satWaitPenalty      = dto.satWaitPenalty;
+        c.satEmptyPenalty     = dto.satEmptyPenalty;
+        c.satRiseRate         = dto.satRiseRate;
+        c.satFallRate         = dto.satFallRate;
+        c.trainSpecs.put(TrainType.STANDARD, new TrainSpec((int) dto.standardCapacity, dto.standardSpeedFactor, dto.standardBuyCost, dto.standardOpCostPerKm));
+        c.trainSpecs.put(TrainType.MEDIUM,   new TrainSpec((int) dto.mediumCapacity,   dto.mediumSpeedFactor,   dto.mediumBuyCost,   dto.mediumOpCostPerKm));
+        c.trainSpecs.put(TrainType.SUPER,    new TrainSpec((int) dto.superCapacity,    dto.superSpeedFactor,    dto.superBuyCost,    dto.superOpCostPerKm));
+        c.trainSpecs.put(TrainType.DELUXE,   new TrainSpec((int) dto.deluxeCapacity,   dto.deluxeSpeedFactor,   dto.deluxeBuyCost,   dto.deluxeOpCostPerKm));
+    }
 
     private static GameConfig load() {
         try (var in = GameConfig.class.getResourceAsStream("/at/htl/afterfall/config.json")) {
             if (in != null) {
-                JSONObject cfg = new JSONObject(new String(in.readAllBytes()));
-                System.out.println("[GameConfig] Geladen aus JAR-Ressource.");
-                return new GameConfig(cfg);
+                return new GameConfig(new JSONObject(new String(in.readAllBytes())));
             }
         } catch (Exception e) {
             System.err.println("[GameConfig] Ladefehler: " + e.getMessage() + " — Defaults aktiv.");
@@ -83,68 +107,48 @@ public class GameConfig {
     }
 
     private GameConfig(JSONObject cfg) {
-        JSONObject gs   = cfg.optJSONObject("gameServer");
-        JSONObject eco  = cfg.optJSONObject("economy");
-
+        JSONObject gs = cfg.optJSONObject("gameServer");
         gameServerHost = gs != null && gs.has("host") ? gs.getString("host") : "localhost";
         gameServerPort = gs != null && gs.has("port") ? gs.getInt("port") : 9090;
-        JSONObject pass = cfg.optJSONObject("passenger");
-        JSONObject city = cfg.optJSONObject("cityGrowth");
-        JSONObject sat  = cfg.optJSONObject("satisfaction");
-        JSONObject tr   = cfg.optJSONObject("trains");
 
-        startingBalance     = d(eco, "startingBalance",     10_000);
-        startingNetWorth    = d(eco, "startingNetWorth",    10_000);
-        stationBuildCost    = d(eco, "stationBuildCost",     8_000);
-        stationNetWorthGain = d(eco, "stationNetWorthGain",  6_000);
-        trackBuildCost      = d(eco, "trackBuildCost",       2_000);
-        trackNetWorthGain   = d(eco, "trackNetWorthGain",    1_600);
+        // Offline-Modus defaults (server mode: overridden via applyFromServer)
+        startingBalance     = 100_000;
+        startingNetWorth    = 0;
+
+        stationBuildCost    = 8_000;
+        stationNetWorthGain = 6_000;
+        trackBuildCost      = 2_000;
+        trackNetWorthGain   = 1_600;
 
         trainSpecs = new EnumMap<>(TrainType.class);
-        trainSpecs.put(TrainType.STANDARD, spec(tr, "STANDARD",  50,  1.0,   20_000, 0.40));
-        trainSpecs.put(TrainType.MEDIUM,   spec(tr, "MEDIUM",   120,  1.0,   48_000, 0.80));
-        trainSpecs.put(TrainType.SUPER,    spec(tr, "SUPER",    300,  1.3,  120_000, 1.60));
-        trainSpecs.put(TrainType.DELUXE,   spec(tr, "DELUXE",   600,  1.5, 6_000_000, 3.50));
+        trainSpecs.put(TrainType.STANDARD, new TrainSpec( 50,  1.0,    20_000, 0.40));
+        trainSpecs.put(TrainType.MEDIUM,   new TrainSpec(120,  1.0,    48_000, 0.80));
+        trainSpecs.put(TrainType.SUPER,    new TrainSpec(300,  1.3,   120_000, 1.60));
+        trainSpecs.put(TrainType.DELUXE,   new TrainSpec(600,  1.5, 6_000_000, 3.50));
 
-        baseSpawnInterval  = d(pass, "baseSpawnInterval",  0.667);
-        farePerPx          = d(pass, "farePerPx",           0.15);
-        minFare            = d(pass, "minFare",            10.0);
-        trainBaseSpeed     = d(pass, "trainBaseSpeed",     80.0);
-        spawnChanceDivisor = d(pass, "spawnChanceDivisor", 250.0);
-        minSatModifier     = d(pass, "minSatModifier",      0.5);
+        baseSpawnInterval  = 0.667;
+        farePerPx          = 0.15;
+        minFare            = 10.0;
+        trainBaseSpeed     = 80.0;
+        spawnChanceDivisor = 250.0;
+        minSatModifier     = 0.5;
 
-        cityInitialDelay   = d(city, "initialDelay",    60.0);
-        cityMinInterval    = d(city, "minInterval",     50.0);
-        cityMaxInterval    = d(city, "maxInterval",    120.0);
-        cityMinStationDist = d(city, "minStationDist",  90.0);
-        citySpawnRadiusMin = d(city, "spawnRadiusMin", 160.0);
-        citySpawnRadiusMax = d(city, "spawnRadiusMax", 480.0);
+        cityInitialDelay   = 60.0;
+        cityMinInterval    = 50.0;
+        cityMaxInterval    = 120.0;
+        cityMinStationDist = 90.0;
+        citySpawnRadiusMin = 160.0;
+        citySpawnRadiusMax = 480.0;
 
-        satInitial        = d(sat, "initial",         50.0);
-        satMaxWait        = d(sat, "maxWait",      45_000.0);
-        satUpdateInterval = d(sat, "updateInterval",   0.5);
-        satBaseTarget     = d(sat, "baseTarget",       55.0);
-        satConnWeight     = d(sat, "connWeight",       25.0);
-        satDeliveryWeight = d(sat, "deliveryWeight",   20.0);
-        satWaitPenalty    = d(sat, "waitPenalty",      25.0);
-        satEmptyPenalty   = d(sat, "emptyPenalty",     10.0);
-        satRiseRate       = d(sat, "riseRate",          0.025);
-        satFallRate       = d(sat, "fallRate",          0.008);
-    }
-
-    private static double d(JSONObject o, String key, double def) {
-        return o != null && o.has(key) ? o.getDouble(key) : def;
-    }
-
-    private static TrainSpec spec(JSONObject tr, String name,
-                                  int defCap, double defSpeed, double defBuy, double defOp) {
-        if (tr == null || !tr.has(name)) return new TrainSpec(defCap, defSpeed, defBuy, defOp);
-        JSONObject t = tr.getJSONObject(name);
-        return new TrainSpec(
-            t.optInt("capacity",       defCap),
-            t.optDouble("speedFactor", defSpeed),
-            t.optDouble("buyCost",     defBuy),
-            t.optDouble("opCostPerKm", defOp)
-        );
+        satInitial        = 50.0;
+        satMaxWait        = 45_000.0;
+        satUpdateInterval = 0.5;
+        satBaseTarget     = 55.0;
+        satConnWeight     = 25.0;
+        satDeliveryWeight = 20.0;
+        satWaitPenalty    = 25.0;
+        satEmptyPenalty   = 10.0;
+        satRiseRate       = 0.025;
+        satFallRate       = 0.008;
     }
 }

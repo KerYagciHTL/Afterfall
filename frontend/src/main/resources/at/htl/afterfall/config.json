@@ -2,47 +2,5 @@
   "gameServer": {
     "host": "localhost",
     "port": 9090
-  },
-  "economy": {
-    "startingBalance":     10000,
-    "startingNetWorth":    10000,
-    "stationBuildCost":     8000,
-    "stationNetWorthGain":  6000,
-    "trackBuildCost":       2000,
-    "trackNetWorthGain":    1600
-  },
-  "trains": {
-    "STANDARD": { "capacity":  50, "speedFactor": 1.0, "buyCost":   75000, "opCostPerKm": 0.50 },
-    "MEDIUM":   { "capacity": 120, "speedFactor": 1.0, "buyCost":  500000, "opCostPerKm": 1.00 },
-    "SUPER":    { "capacity": 300, "speedFactor": 1.3, "buyCost": 1500000, "opCostPerKm": 2.00 },
-    "DELUXE":   { "capacity": 600, "speedFactor": 1.5, "buyCost": 8000000, "opCostPerKm": 3.50 }
-  },
-  "passenger": {
-    "baseSpawnInterval":  2.5,
-    "farePerPx":          0.10,
-    "minFare":           5.0,
-    "trainBaseSpeed":    80.0,
-    "spawnChanceDivisor": 250.0,
-    "minSatModifier":     0.5
-  },
-  "cityGrowth": {
-    "initialDelay":    60.0,
-    "minInterval":     150,
-    "maxInterval":    250,
-    "minStationDist":  90.0,
-    "spawnRadiusMin": 160.0,
-    "spawnRadiusMax": 480.0
-  },
-  "satisfaction": {
-    "initial":         50.0,
-    "maxWait":      30000.0,
-    "updateInterval":   0.5,
-    "baseTarget":      55.0,
-    "connWeight":      25.0,
-    "deliveryWeight":  20.0,
-    "waitPenalty":     25.0,
-    "emptyPenalty":    10.0,
-    "riseRate":         0.025,
-    "fallRate":         0.015
   }
 }

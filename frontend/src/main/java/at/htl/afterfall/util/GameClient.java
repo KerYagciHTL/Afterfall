@@ -2,6 +2,7 @@ package at.htl.afterfall.util;
 
 import at.htl.afterfall.GameConfig;
 import at.htl.afterfall.persistence.DatabaseManager;
+import at.htl.afterfall.protocol.dto.GameConfigDto;
 import at.htl.afterfall.protocol.command.GameCommand;
 import at.htl.afterfall.protocol.command.RegisterCommand;
 import at.htl.afterfall.protocol.response.*;
@@ -115,9 +116,13 @@ public class GameClient {
     }
 
     private void dispatch(Object obj) {
-        if (obj instanceof RegisterResponse r && !r.success) {
-            disconnect();
-            if (onError != null) Platform.runLater(() -> onError.accept(r.message));
+        if (obj instanceof RegisterResponse r) {
+            if (!r.success) {
+                disconnect();
+                if (onError != null) Platform.runLater(() -> onError.accept(r.message));
+            } else if (r.config != null) {
+                GameConfig.applyFromServer(r.config);
+            }
         } else if (obj instanceof GameStateUpdate u && onUpdate != null)
             Platform.runLater(() -> onUpdate.accept(u));
         else if (obj instanceof CommandResult r) {

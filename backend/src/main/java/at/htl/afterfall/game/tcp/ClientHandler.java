@@ -1,9 +1,12 @@
 package at.htl.afterfall.game.tcp;
 
+import at.htl.afterfall.game.GameConfig;
 import at.htl.afterfall.game.GameSession;
 import at.htl.afterfall.game.db.GameSaveRepository;
 import at.htl.afterfall.protocol.Protocol;
+import at.htl.afterfall.protocol.TrainType;
 import at.htl.afterfall.protocol.command.*;
+import at.htl.afterfall.protocol.dto.GameConfigDto;
 import at.htl.afterfall.protocol.response.*;
 
 import java.io.*;
@@ -83,8 +86,53 @@ public class ClientHandler implements Runnable {
         this.playerUuid = cmd.uuid;
         this.playerName = cmd.playerName;
         saveRepo.registerPlayer(cmd.uuid, cmd.playerName);
-        send(new RegisterResponse(true, "Willkommen, " + cmd.playerName + "!"));
+        send(new RegisterResponse(true, "Willkommen, " + cmd.playerName + "!", buildConfigDto()));
         LOG.info("Player registered: " + cmd.playerName + " [" + cmd.uuid + "]");
+    }
+
+    private GameConfigDto buildConfigDto() {
+        GameConfig c = GameConfig.get();
+        GameConfigDto dto = new GameConfigDto();
+        dto.stationBuildCost    = c.stationBuildCost;
+        dto.stationNetWorthGain = c.stationNetWorthGain;
+        dto.trackBuildCost      = c.trackBuildCost;
+        dto.trackNetWorthGain   = c.trackNetWorthGain;
+        dto.trainBaseSpeed      = c.trainBaseSpeed;
+        dto.farePerPx           = c.farePerPx;
+        dto.minFare             = c.minFare;
+        dto.baseSpawnInterval   = c.baseSpawnInterval;
+        dto.spawnChanceDivisor  = c.spawnChanceDivisor;
+        dto.minSatModifier      = c.minSatModifier;
+        dto.cityInitialDelay    = c.cityInitialDelay;
+        dto.cityMinInterval     = c.cityMinInterval;
+        dto.cityMaxInterval     = c.cityMaxInterval;
+        dto.cityMinStationDist  = c.cityMinStationDist;
+        dto.citySpawnRadiusMin  = c.citySpawnRadiusMin;
+        dto.citySpawnRadiusMax  = c.citySpawnRadiusMax;
+        dto.satInitial          = c.satInitial;
+        dto.satMaxWait          = c.satMaxWait;
+        dto.satUpdateInterval   = c.satUpdateInterval;
+        dto.satBaseTarget       = c.satBaseTarget;
+        dto.satConnWeight       = c.satConnWeight;
+        dto.satDeliveryWeight   = c.satDeliveryWeight;
+        dto.satWaitPenalty      = c.satWaitPenalty;
+        dto.satEmptyPenalty     = c.satEmptyPenalty;
+        dto.satRiseRate         = c.satRiseRate;
+        dto.satFallRate         = c.satFallRate;
+        spec(dto, c, TrainType.STANDARD); spec(dto, c, TrainType.MEDIUM);
+        spec(dto, c, TrainType.SUPER);    spec(dto, c, TrainType.DELUXE);
+        return dto;
+    }
+
+    private void spec(GameConfigDto dto, GameConfig c, TrainType t) {
+        GameConfig.TrainSpec s = c.trainSpec(t);
+        if (s == null) return;
+        switch (t) {
+            case STANDARD -> { dto.standardCapacity = s.capacity(); dto.standardSpeedFactor = s.speedFactor(); dto.standardBuyCost = s.buyCost(); dto.standardOpCostPerKm = s.opCostPerKm(); }
+            case MEDIUM   -> { dto.mediumCapacity   = s.capacity(); dto.mediumSpeedFactor   = s.speedFactor(); dto.mediumBuyCost   = s.buyCost(); dto.mediumOpCostPerKm   = s.opCostPerKm(); }
+            case SUPER    -> { dto.superCapacity    = s.capacity(); dto.superSpeedFactor    = s.speedFactor(); dto.superBuyCost    = s.buyCost(); dto.superOpCostPerKm    = s.opCostPerKm(); }
+            case DELUXE   -> { dto.deluxeCapacity   = s.capacity(); dto.deluxeSpeedFactor   = s.speedFactor(); dto.deluxeBuyCost   = s.buyCost(); dto.deluxeOpCostPerKm   = s.opCostPerKm(); }
+        }
     }
 
     private void handleNewGame(NewGameCommand cmd) throws IOException {
