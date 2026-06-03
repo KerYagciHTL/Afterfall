@@ -38,11 +38,15 @@ jobs:
         env:
           RANKING_URL: ${{ secrets.RANKING_URL }}
           RANKING_TOKEN: ${{ secrets.RANKING_TOKEN }}
+          GAME_SERVER_HOST: ${{ secrets.GAME_SERVER_HOST }}
         run: |
           CFG=frontend/src/main/resources/at/htl/afterfall/config.properties
           sed -i.bak "s|ranking\.url=.*|ranking.url=${RANKING_URL}|" "$CFG"
           sed -i.bak "s|ranking\.token=.*|ranking.token=${RANKING_TOKEN}|" "$CFG"
           rm -f "${CFG}.bak"
+          JSON=frontend/src/main/resources/at/htl/afterfall/config.json
+          sed -i.bak "s|\"host\": \".*\"|\"host\": \"${GAME_SERVER_HOST}\"|" "$JSON"
+          rm -f "${JSON}.bak"
 
       - name: Maven package
         shell: bash
