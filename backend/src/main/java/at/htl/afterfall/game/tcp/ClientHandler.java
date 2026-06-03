@@ -228,6 +228,11 @@ public class ClientHandler implements Runnable {
     }
 
     private void cleanup() {
+        if (session != null && currentSaveId >= 0) {
+            session.stopSimulation();
+            try { saveRepo.saveWorld(currentSaveId, session.getWorld()); }
+            catch (Exception e) { LOG.warning("Auto-save bei Disconnect fehlgeschlagen: " + e.getMessage()); }
+        }
         cleanupSession();
         try { socket.close(); } catch (Exception ignored) {}
         LOG.info("Client disconnected: " + (playerName != null ? playerName : "unknown"));
