@@ -31,6 +31,7 @@ public class GameSession {
     private final ObjectOutputStream out;
     private final Random             rng      = new Random();
     private boolean                  paused   = false;
+    private volatile int             speed    = 1;
     private long                     lastSave = 0;
     private Consumer<GameSession>    onQuit;
 
@@ -82,7 +83,7 @@ public class GameSession {
 
     private void tick() {
         if (paused) return;
-        double delta = TICK_DELTA;
+        double delta = TICK_DELTA * speed;
 
         double balanceBefore = world.getEconomy().getBalance();
         cityGrowthEngine.tick(delta);
@@ -426,7 +427,7 @@ public class GameSession {
     }
 
     public void handleSetSpeed(SetSpeedCommand cmd) {
-        // Speed is visual-only on client; server always runs at fixed rate
+        scheduler.submit(() -> this.speed = Math.max(1, Math.min(3, cmd.multiplier)));
     }
 
     public void handleSetTicketPrice(SetTicketPriceCommand cmd) {

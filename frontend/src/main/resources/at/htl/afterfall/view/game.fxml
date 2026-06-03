@@ -50,6 +50,8 @@
             <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
             <Button fx:id="pauseButton" text="⏸  Pause" onAction="#onPause"
                     styleClass="btn-neutral"/>
+            <Button fx:id="speedButton" text="▶▶  1×" onAction="#onSpeedToggle"
+                    styleClass="btn-neutral"/>
             <Separator orientation="VERTICAL" style="-fx-padding: 0 4 0 4;"/>
             <ToggleButton fx:id="buildStationBtn" text="⊕  Station" onAction="#onBuildStation"
                           styleClass="toggle-build"/>

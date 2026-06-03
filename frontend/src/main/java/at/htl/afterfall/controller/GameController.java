@@ -43,6 +43,7 @@ public class GameController {
     @FXML private Label satisfactionLabel;
     @FXML private Label netWorthLabel;
     @FXML private Button pauseButton;
+    @FXML private Button       speedButton;
     @FXML private ToggleButton buildStationBtn;
     @FXML private ToggleButton buildTrackBtn;
     @FXML private ToggleButton buildRouteBtn;
@@ -69,6 +70,7 @@ public class GameController {
     private int     activeRouteId       = -1;
     private String  pendingRouteColorHex = null;
     private boolean serverPaused        = false;
+    private int     serverSpeed         = 1;
 
     private static double TRACK_BUILD_COST()       { return GameConfig.get().trackBuildCost; }
     private static double STATION_BUILD_COST()     { return GameConfig.get().stationBuildCost; }
@@ -777,6 +779,18 @@ public class GameController {
         serverPaused = !serverPaused;
         sendCmd(new PauseCommand(GameClient.get().getPlayerUuid(), serverPaused));
         pauseButton.setText(serverPaused ? "▶  Weiter" : "⏸  Pause");
+    }
+
+    @FXML
+    public void onSpeedToggle() {
+        serverSpeed = serverSpeed % 3 + 1;
+        sendCmd(new SetSpeedCommand(GameClient.get().getPlayerUuid(), serverSpeed));
+        speedButton.setText("▶▶  " + serverSpeed + "×");
+        speedButton.setStyle(serverSpeed > 1
+                ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
+                  + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
+                  + " -fx-padding: 7 16 7 16;"
+                : "");
     }
 
     @FXML
