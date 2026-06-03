@@ -179,6 +179,7 @@ public class MainController {
 
     private void connectGameServer() {
         GameClient client = GameClient.get();
+        client.setOnSaveList(saves -> updateSaveList(saves));
         if (client.isConnected()) { refreshServerSaves(); return; }
 
         CompletableFuture.runAsync(() -> {
@@ -189,7 +190,6 @@ public class MainController {
             try {
                 String uuid = GameClient.loadOrCreateUuid();
                 String name = RankingClient.getPlayerName();
-                client.setOnSaveList(saves -> updateSaveList(saves));
                 client.register(uuid, name);
                 client.send(new ListSavesCommand(uuid));
             } catch (Exception e) {
