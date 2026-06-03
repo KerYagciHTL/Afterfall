@@ -115,7 +115,10 @@ public class GameClient {
     }
 
     private void dispatch(Object obj) {
-        if (obj instanceof GameStateUpdate u && onUpdate != null)
+        if (obj instanceof RegisterResponse r && !r.success) {
+            disconnect();
+            if (onError != null) Platform.runLater(() -> onError.accept(r.message));
+        } else if (obj instanceof GameStateUpdate u && onUpdate != null)
             Platform.runLater(() -> onUpdate.accept(u));
         else if (obj instanceof CommandResult r) {
             if (r.success && r.state != null && onSnapshot != null)

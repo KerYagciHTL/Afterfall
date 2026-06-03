@@ -2,6 +2,7 @@ package at.htl.afterfall.game.tcp;
 
 import at.htl.afterfall.game.GameSession;
 import at.htl.afterfall.game.db.GameSaveRepository;
+import at.htl.afterfall.protocol.Protocol;
 import at.htl.afterfall.protocol.command.*;
 import at.htl.afterfall.protocol.response.*;
 
@@ -73,6 +74,12 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleRegister(RegisterCommand cmd) throws IOException {
+        if (!Protocol.VERSION.equals(cmd.protocolVersion)) {
+            send(new RegisterResponse(false,
+                "Veralteter Client (v" + cmd.protocolVersion + "). Bitte auf v" + Protocol.VERSION + " aktualisieren."));
+            socket.close();
+            return;
+        }
         this.playerUuid = cmd.uuid;
         this.playerName = cmd.playerName;
         saveRepo.registerPlayer(cmd.uuid, cmd.playerName);
