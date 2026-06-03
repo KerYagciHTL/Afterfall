@@ -778,6 +778,7 @@ public class GameController {
     private void togglePause() {
         serverPaused = !serverPaused;
         sendCmd(new PauseCommand(GameClient.get().getPlayerUuid(), serverPaused));
+        gameLoop.togglePause();
         pauseButton.setText(serverPaused ? "▶  Weiter" : "⏸  Pause");
     }
 

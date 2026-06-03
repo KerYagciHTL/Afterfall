@@ -44,6 +44,10 @@ public class GameLoop extends AnimationTimer {
     @Override
     public void handle(long now) {
         if (serverMode) {
+            if (paused) {
+                gameView.render();
+                return;
+            }
             if (lastTime != 0) {
                 double delta = Math.min((now - lastTime) / 1_000_000_000.0, MAX_DELTA);
                 moveTrainsVisual(delta * speedMultiplier);
