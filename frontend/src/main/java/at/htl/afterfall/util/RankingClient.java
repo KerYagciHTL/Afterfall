@@ -8,8 +8,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -19,7 +17,6 @@ public class RankingClient {
 
     private static final String BASE_URL;
     private static final String TOKEN;
-    private static final Path PLAYER_NAME_FILE;
 
     static {
         try (var in = RankingClient.class.getResourceAsStream("/at/htl/afterfall/config.properties")) {
@@ -28,27 +25,17 @@ public class RankingClient {
             BASE_URL = props.getProperty("ranking.url", "http://localhost:8080/ranking");
             TOKEN    = props.getProperty("ranking.token", "");
         } catch (Exception e) { throw new RuntimeException(e); }
-
-        PLAYER_NAME_FILE = DatabaseManager.getDataDir().resolve("ranking.properties");
     }
 
     private static String loadPlayerName() {
-        try {
-            if (Files.exists(PLAYER_NAME_FILE)) {
-                var p = new Properties();
-                p.load(Files.newBufferedReader(PLAYER_NAME_FILE));
-                return p.getProperty("player.name", "").strip();
-            }
-        } catch (Exception ignored) {}
-        return "";
+        DatabaseManager.initSchema();
+        String name = DatabaseManager.getPlayerValue("playerName");
+        return name != null ? name : "";
     }
 
     private static void savePlayerName(String name) {
-        try {
-            var p = new Properties();
-            p.setProperty("player.name", name);
-            p.store(Files.newBufferedWriter(PLAYER_NAME_FILE), null);
-        } catch (Exception ignored) {}
+        DatabaseManager.initSchema();
+        DatabaseManager.setPlayerValue("playerName", name);
     }
 
     public static boolean hasPlayerName()   { return !loadPlayerName().isBlank(); }

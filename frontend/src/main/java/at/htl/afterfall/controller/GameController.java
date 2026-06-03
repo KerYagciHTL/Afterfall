@@ -3,12 +3,10 @@ package at.htl.afterfall.controller;
 import at.htl.afterfall.GameConfig;
 import at.htl.afterfall.MainApp;
 import at.htl.afterfall.model.*;
-import at.htl.afterfall.persistence.*;
 import at.htl.afterfall.protocol.command.*;
 import at.htl.afterfall.protocol.dto.*;
 import at.htl.afterfall.protocol.response.*;
 import at.htl.afterfall.util.GameClient;
-import at.htl.afterfall.util.RankingClient;
 import at.htl.afterfall.simulation.GameLoop;
 import at.htl.afterfall.tutorial.TutorialManager;
 import at.htl.afterfall.tutorial.TutorialOverlay;
@@ -23,8 +21,6 @@ import javafx.beans.binding.Bindings;
 import javafx.event.Event;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
@@ -32,13 +28,13 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.stream.Collectors;
 
 public class GameController {
 
@@ -67,33 +63,20 @@ public class GameController {
     private Region    toastSpacer;
     private VBox      trainShopOverlay = null;
     private long      lastRateUiUpdate = 0;
-    private final Random rng = new Random();
     private TutorialManager tutorialManager;
     private TutorialOverlay tutorialOverlay;
     private Timeline        tutorialTimer;
 
-    // ── Server-Modus ─────────────────────────────────────────────────────────
-    private boolean serverMode          = false;
     private int     activeRouteId       = -1;
     private String  pendingRouteColorHex = null;
     private boolean serverPaused        = false;
     private int     serverSpeed         = 1;
 
-    private static double TRACK_BUILD_COST()      { return GameConfig.get().trackBuildCost; }
-    private static double TRACK_NET_WORTH_GAIN()  { return GameConfig.get().trackNetWorthGain; }
-    private static double STATION_BUILD_COST()    { return GameConfig.get().stationBuildCost; }
-    private static double STATION_NET_WORTH_GAIN(){ return GameConfig.get().stationNetWorthGain; }
-
-    private final SaveGameDao saveGameDao = new SaveGameDao();
-    private final StationDao  stationDao  = new StationDao();
-    private final TrackDao    trackDao    = new TrackDao();
-    private final RouteDao    routeDao    = new RouteDao();
-    private final TrainDao    trainDao    = new TrainDao();
-    private final EconomyDao  economyDao  = new EconomyDao();
+    private static double TRACK_BUILD_COST()       { return GameConfig.get().trackBuildCost; }
+    private static double STATION_BUILD_COST()     { return GameConfig.get().stationBuildCost; }
 
     @FXML
     public void initialize() {
-        DatabaseManager.initSchema();
         world    = new GameWorld();
         colorGen = new ColorGenerator();
         gameView = new GameView(world);
@@ -253,7 +236,7 @@ public class GameController {
                         case ESCAPE -> cancelBuildMode();
                         case DELETE -> deleteSelected();
                         case S -> {
-                            if (e.isControlDown()) saveGame();
+                            if (e.isControlDown()) showToast("Spielstand wird automatisch gespeichert.", false);
                             else if (buildMode == BuildMode.BUILD_STATION) cancelBuildMode();
                             else activateBuildStation();
                         }
@@ -273,13 +256,9 @@ public class GameController {
         });
 
         gameLoop = new GameLoop(world, gameView);
-        gameLoop.setOnNewStation(s -> {
-            if (world.getCurrentSave() != null) {
-                int dbId = stationDao.insert(world.getCurrentSave().getId(), s);
-                s.setId(dbId);
-            }
-            showToast("Neuer Stadtteil: " + s.getName() + " fordert Anbindung!", true);
-        });
+        gameLoop.setOnNewStation(s ->
+            showToast("Neuer Stadtteil: " + s.getName() + " fordert Anbindung!", true));
+        gameLoop.setServerMode(true);
         gameLoop.start();
 
         updateSatisfactionColor(world.getSatisfaction().getValue());
@@ -291,7 +270,6 @@ public class GameController {
     // ── Server-Modus: Einstieg & Updates ─────────────────────────────────────
 
     public void initFromSnapshot(GameStateSnapshot snapshot, boolean isNewGame) {
-        serverMode = true;
         gameLoop.setServerMode(true);
 
         GameClient client = GameClient.get();
@@ -308,9 +286,9 @@ public class GameController {
         }));
 
         applySnapshot(snapshot);
-        
+
         if (isNewGame) {
-            setupTutorial(false);
+            setupTutorial();
         }
     }
 
@@ -372,7 +350,6 @@ public class GameController {
         world.getEconomy().setIncomeRate(snap.economy.incomeRate);
         world.getSatisfaction().valueProperty().set(snap.satisfaction);
 
-        // Route-Baumodus nach Snapshot wiederherstellen
         if (buildMode == BuildMode.BUILD_ROUTE) {
             if (pendingRouteColorHex != null) {
                 String hex = pendingRouteColorHex;
@@ -449,17 +426,7 @@ public class GameController {
         );
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
-                .ifPresent(r -> {
-                    if (serverMode) {
-                        sendCmd(new DemolishTrackCommand(GameClient.get().getPlayerUuid(), track.getId()));
-                    } else {
-                        world.getTracks().remove(track);
-                        world.getEconomy().addNetWorth(-TRACK_BUILD_COST());
-                        if (world.getCurrentSave() != null) trackDao.delete(track.getId());
-                        showToast("Strecke abgerissen.", false);
-                        gameView.render();
-                    }
-                });
+                .ifPresent(r -> sendCmd(new DemolishTrackCommand(GameClient.get().getPlayerUuid(), track.getId())));
     }
 
     private void handleStationDemolish(Station station) {
@@ -477,39 +444,7 @@ public class GameController {
         );
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
-                .ifPresent(r -> {
-                    if (serverMode) {
-                        sendCmd(new DemolishStationCommand(GameClient.get().getPlayerUuid(), station.getId()));
-                    } else {
-                        world.getPassengers().removeAll(station.getWaitingPassengers());
-                        station.getWaitingPassengers().clear();
-
-                        for (Route route : world.getRoutes()) {
-                            int removeIdx = route.getStops().indexOf(station);
-                            if (removeIdx >= 0) {
-                                route.getStops().remove(station);
-                                adjustTrainsAfterStopRemove(route, removeIdx);
-                            }
-                        }
-
-                        List<Track> toRemove = world.getTracks().stream()
-                                .filter(t -> t.getFrom() == station || t.getTo() == station)
-                                .toList();
-                        for (Track t : toRemove) {
-                            world.getTracks().remove(t);
-                            if (world.getCurrentSave() != null) trackDao.delete(t.getId());
-                        }
-
-                        world.getStations().remove(station);
-                        world.getEconomy().addNetWorth(-STATION_BUILD_COST());
-                        if (world.getCurrentSave() != null) stationDao.delete(station.getId());
-
-                        routeListView.refresh();
-                        trainListView.refresh();
-                        showToast("Station abgerissen.", false);
-                        gameView.render();
-                    }
-                });
+                .ifPresent(r -> sendCmd(new DemolishStationCommand(GameClient.get().getPlayerUuid(), station.getId())));
     }
 
     private void handleRouteSegmentClick(Route route, Station nearest, Station other) {
@@ -524,150 +459,19 @@ public class GameController {
         );
         confirm.showAndWait()
                 .filter(r -> r == ButtonType.OK)
-                .ifPresent(r -> {
-                    if (serverMode) {
-                        sendCmd(new RemoveRouteStopCommand(
-                            GameClient.get().getPlayerUuid(), route.getId(), nearest.getId()));
-                    } else {
-                        int removeIdx = route.getStops().indexOf(nearest);
-                        route.getStops().remove(nearest);
-                        adjustTrainsAfterStopRemove(route, removeIdx);
-                        routeListView.refresh();
-                        gameView.render();
-                        showToast("Verbindung getrennt.", false);
-                    }
-                });
+                .ifPresent(r -> sendCmd(new RemoveRouteStopCommand(
+                    GameClient.get().getPlayerUuid(), route.getId(), nearest.getId())));
     }
 
     private void handleRouteSegmentRedirect(Route route, Station stopA, Station stopB,
                                             int insertAfterIndex, Station newStation) {
         if (buildMode != BuildMode.NONE) return;
-
-        if (serverMode) {
-            sendCmd(new InsertRouteStopCommand(
-                GameClient.get().getPlayerUuid(),
-                route.getId(), stopA.getId(), stopB.getId(),
-                insertAfterIndex, newStation.getId()
-            ));
-            showToast("Station wird eingefügt...", false);
-            return;
-        }
-
-        List<Station> stops = route.getStops();
-
-        if (stops.contains(newStation)) {
-            showToast("Diese Station ist bereits Teil der Route.", true);
-            return;
-        }
-
-        boolean needA  = !hasTrackBetween(stopA, newStation);
-        boolean needB  = !hasTrackBetween(stopB, newStation);
-        int     needed = (needA ? 1 : 0) + (needB ? 1 : 0);
-        double  cost   = needed * TRACK_BUILD_COST();
-        if (needed > 0 && world.getEconomy().getBalance() < cost) {
-            showToast("Zu wenig Geld! Benötigt: " + formatCurrency(cost)
-                    + " für " + needed + " Strecke" + (needed > 1 ? "n" : "") + ".", true);
-            return;
-        }
-
-        Track tA = null, tB = null;
-        if (needA) {
-            tA = new Track(world.nextTrackId(), stopA, newStation);
-            world.getTracks().add(tA);
-            world.getEconomy().addBalance(-TRACK_BUILD_COST());
-            world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
-        }
-        if (needB) {
-            tB = new Track(world.nextTrackId(), stopB, newStation);
-            world.getTracks().add(tB);
-            world.getEconomy().addBalance(-TRACK_BUILD_COST());
-            world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
-        }
-        stops.add(insertAfterIndex + 1, newStation);
-        adjustTrainsAfterStopInsert(route, insertAfterIndex + 1);
-
-        routeListView.refresh();
-        gameView.render();
-        showToast("Station eingefügt" + (needed > 0 ? " – " + needed + " Strecke(n) gebaut." : "."), false);
-
-        if (world.getCurrentSave() != null) {
-            int sid = world.getCurrentSave().getId();
-            try {
-                if (tA != null) tA.setId(trackDao.insert(sid, tA));
-                if (tB != null) tB.setId(trackDao.insert(sid, tB));
-            } catch (Exception ex) {
-                System.err.println("Track-Persistenz fehlgeschlagen: " + ex.getMessage());
-            }
-        }
-    }
-
-    private boolean hasTrackBetween(Station a, Station b) {
-        for (Track t : world.getTracks()) {
-            if ((t.getFrom() == a && t.getTo() == b) ||
-                    (t.getFrom() == b && t.getTo() == a)) return true;
-        }
-        return false;
-    }
-
-    private void spawnNewTrainOnRoute(Train newTrain, Route route) {
-        List<Station> stops = route.getStops();
-        if (stops.size() < 2) {
-            newTrain.setCurrentStopIndex(0);
-            newTrain.setPosition(0.0);
-            newTrain.setForward(true);
-            return;
-        }
-        int S = stops.size();
-        List<Train> others = route.getTrains().stream()
-                .filter(t -> t != newTrain).toList();
-
-        int bestIdx;
-        if (others.isEmpty()) {
-            bestIdx = rng.nextInt(S);
-        } else {
-            bestIdx = 0;
-            double bestMinDist = -1;
-            for (int i = 0; i < S; i++) {
-                double minDist = Double.MAX_VALUE;
-                for (Train t : others) {
-                    int diff = Math.abs(t.getCurrentStopIndex() - i);
-                    double d = Math.min(diff, S - diff);
-                    if (d < minDist) minDist = d;
-                }
-                if (minDist > bestMinDist) {
-                    bestMinDist = minDist;
-                    bestIdx = i;
-                }
-            }
-        }
-
-        boolean fwd = !(bestIdx == S - 1 && !route.isCircular());
-        newTrain.setCurrentStopIndex(bestIdx);
-        newTrain.setPosition(0.0);
-        newTrain.setForward(fwd);
-    }
-
-    private void distributeTrainsOnRoute(Route route) {
-        List<Train> trains = route.getTrains();
-        List<Station> stops = route.getStops();
-        if (trains.isEmpty() || stops.size() < 2) return;
-
-        int S = stops.size();
-        int N = trains.size();
-        int offset = rng.nextInt(S);
-
-        for (int i = 0; i < N; i++) {
-            Train t = trains.get(i);
-            int idx = (offset + i * Math.max(1, S / N)) % S;
-            boolean fwd = (i % 2 == 0);
-            if (!route.isCircular()) {
-                if (idx == S - 1) fwd = false;
-                else if (idx == 0) fwd = true;
-            }
-            t.setCurrentStopIndex(idx);
-            t.setPosition(0.0);
-            t.setForward(fwd);
-        }
+        sendCmd(new InsertRouteStopCommand(
+            GameClient.get().getPlayerUuid(),
+            route.getId(), stopA.getId(), stopB.getId(),
+            insertAfterIndex, newStation.getId()
+        ));
+        showToast("Station wird eingefügt...", false);
     }
 
     // ── BuildMode-Verwaltung ──────────────────────────────────────────────────
@@ -797,18 +601,11 @@ public class GameController {
         );
         buyBtn.setOnAction(e -> {
             closeTrainShop();
-            if (serverMode) {
-                sendCmd(new BuyTrainCommand(
-                    GameClient.get().getPlayerUuid(),
-                    at.htl.afterfall.protocol.TrainType.valueOf(type.name())
-                ));
-                showToast(type.name() + " bestellt...", false);
-            } else {
-                Train train = new Train(world.nextTrainId(), type);
-                world.getTrains().add(train);
-                world.getEconomy().addBalance(-type.buyCost());
-                showToast(type.name() + " gekauft! Im Züge-Tab Route zuweisen.", false);
-            }
+            sendCmd(new BuyTrainCommand(
+                GameClient.get().getPlayerUuid(),
+                at.htl.afterfall.protocol.TrainType.valueOf(type.name())
+            ));
+            showToast(type.name() + " bestellt...", false);
         });
 
         card.getChildren().addAll(iconLbl, nameLbl, capLbl, priceLbl, buyBtn);
@@ -872,15 +669,7 @@ public class GameController {
 
     // ── Tutorial ──────────────────────────────────────────────────────────────
 
-    private void setupTutorial(boolean seedEntities) {
-        if (seedEntities) {
-            Station s1 = new Station(world.nextStationId(), "Hauptbahnhof", -200, 0);
-            Station s2 = new Station(world.nextStationId(), "Stadtzentrum", 200, 0);
-            world.getStations().addAll(s1, s2);
-            Train startTrain = new Train(world.nextTrainId(), TrainType.STANDARD);
-            world.getTrains().add(startTrain);
-        }
-
+    private void setupTutorial() {
         tutorialManager = new TutorialManager();
         tutorialOverlay = new TutorialOverlay(tutorialManager, this::advanceTutorial, this::skipTutorial);
         canvasContainer.getChildren().add(tutorialOverlay);
@@ -934,21 +723,7 @@ public class GameController {
         String name = askInput("Station benennen", "Name:",
                 "Station " + (world.getStations().size() + 1));
         if (name == null || name.isBlank()) return;
-
-        if (serverMode) {
-            sendCmd(new BuildStationCommand(GameClient.get().getPlayerUuid(), wx, wy, name));
-            return;
-        }
-
-        Station s = new Station(world.nextStationId(), name, wx, wy);
-        world.getStations().add(s);
-        world.getEconomy().addBalance(-STATION_BUILD_COST());
-        world.getEconomy().addNetWorth(STATION_NET_WORTH_GAIN());
-        if (world.getCurrentSave() != null) {
-            int dbId = stationDao.insert(world.getCurrentSave().getId(), s);
-            s.setId(dbId);
-        }
-        gameView.render();
+        sendCmd(new BuildStationCommand(GameClient.get().getPlayerUuid(), wx, wy, name));
     }
 
     private void selectStationForTrack(double wx, double wy) {
@@ -971,100 +746,26 @@ public class GameController {
             showToast("Im Minus können keine Strecken gebaut werden.", true);
             return;
         }
-
-        if (serverMode) {
-            sendCmd(new BuildTrackCommand(GameClient.get().getPlayerUuid(), from.getId(), to.getId()));
-            return;
-        }
-
-        Track t = new Track(world.nextTrackId(), from, to);
-        world.getTracks().add(t);
-        world.getEconomy().addBalance(-TRACK_BUILD_COST());
-        world.getEconomy().addNetWorth(TRACK_NET_WORTH_GAIN());
-        if (world.getCurrentSave() != null) {
-            int dbId = trackDao.insert(world.getCurrentSave().getId(), t);
-            t.setId(dbId);
-        }
-        gameView.render();
+        sendCmd(new BuildTrackCommand(GameClient.get().getPlayerUuid(), from.getId(), to.getId()));
     }
 
     private void addStationToRoute(double wx, double wy) {
         if (activeRoute == null) return;
-
-        if (serverMode) {
-            if (activeRouteId == -1) {
-                showToast("Warte auf Server-Bestätigung...", false);
-                return;
-            }
-            Track clickedTrack = gameView.findTrackAt(wx, wy);
-            if (clickedTrack == null) {
-                showToast("Klicke auf eine Strecke, um sie zur Route hinzuzufügen.", true);
-                return;
-            }
-            sendCmd(new AddRouteStopCommand(
-                GameClient.get().getPlayerUuid(),
-                activeRouteId,
-                clickedTrack.getFrom().getId(),
-                clickedTrack.getTo().getId()
-            ));
+        if (activeRouteId == -1) {
+            showToast("Warte auf Server-Bestätigung...", false);
             return;
         }
-
         Track clickedTrack = gameView.findTrackAt(wx, wy);
         if (clickedTrack == null) {
             showToast("Klicke auf eine Strecke, um sie zur Route hinzuzufügen.", true);
             return;
         }
-
-        Station trackA = clickedTrack.getFrom();
-        Station trackB = clickedTrack.getTo();
-        List<Station> stops = activeRoute.getStops();
-
-        if (stops.isEmpty()) {
-            if (!world.getRoutes().contains(activeRoute)) {
-                activeRoute.setName("Linie " + (world.getRoutes().size() + 1));
-                world.getRoutes().add(activeRoute);
-            }
-            stops.add(trackA);
-            stops.add(trackB);
-            setStatus("Nächste angrenzende Strecke anklicken ↺  |  ESC = Fertig");
-            routeListView.refresh();
-            gameView.render();
-            return;
-        }
-
-        Station lastStop = stops.getLast();
-
-        Station nextStop;
-        if (trackA == lastStop)      nextStop = trackB;
-        else if (trackB == lastStop) nextStop = trackA;
-        else {
-            showToast("Diese Strecke verbindet nicht mit dem letzten Halt.", true);
-            return;
-        }
-
-        if (nextStop == stops.getFirst() && stops.size() >= 2) {
-            if (!activeRoute.isCircular()) {
-                activeRoute.setCircular(true);
-                routeListView.refresh();
-                gameView.render();
-                showToast("Route als Kreis geschlossen! ESC zum Fertigstellen.", false);
-                setStatus("Kreis-Route aktiv. ESC = Fertig.");
-            } else {
-                showToast("Route ist bereits als Kreis angelegt.", false);
-                cancelBuildMode();
-            }
-            return;
-        }
-
-        if (stops.contains(nextStop)) {
-            showToast("Diese Station ist bereits in der Route.", true);
-            return;
-        }
-
-        stops.add(nextStop);
-        routeListView.refresh();
-        gameView.render();
+        sendCmd(new AddRouteStopCommand(
+            GameClient.get().getPlayerUuid(),
+            activeRouteId,
+            clickedTrack.getFrom().getId(),
+            clickedTrack.getTo().getId()
+        ));
     }
 
     // ── Toolbar-Aktionen ──────────────────────────────────────────────────────
@@ -1075,38 +776,22 @@ public class GameController {
     }
 
     private void togglePause() {
-        if (serverMode) {
-            serverPaused = !serverPaused;
-            sendCmd(new PauseCommand(GameClient.get().getPlayerUuid(), serverPaused));
-            pauseButton.setText(serverPaused ? "▶  Weiter" : "⏸  Pause");
-        } else {
-            gameLoop.togglePause();
-            pauseButton.setText(gameLoop.isPaused() ? "▶  Weiter" : "⏸  Pause");
-        }
+        serverPaused = !serverPaused;
+        sendCmd(new PauseCommand(GameClient.get().getPlayerUuid(), serverPaused));
+        pauseButton.setText(serverPaused ? "▶  Weiter" : "⏸  Pause");
     }
 
     @FXML
     public void onSpeedToggle() {
-        if (serverMode) {
-            serverSpeed = serverSpeed % 3 + 1;
-            sendCmd(new SetSpeedCommand(GameClient.get().getPlayerUuid(), serverSpeed));
-            gameLoop.setSpeedMultiplier(serverSpeed);
-            speedButton.setText("▶▶  " + serverSpeed + "×");
-            speedButton.setStyle(serverSpeed > 1
-                    ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
-                      + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
-                      + " -fx-padding: 7 16 7 16;"
-                    : "");
-        } else {
-            int next = gameLoop.getSpeedMultiplier() % 3 + 1;
-            gameLoop.setSpeedMultiplier(next);
-            speedButton.setText("▶▶  " + next + "×");
-            speedButton.setStyle(next > 1
-                    ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
-                      + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
-                      + " -fx-padding: 7 16 7 16;"
-                    : "");
-        }
+        serverSpeed = serverSpeed % 3 + 1;
+        sendCmd(new SetSpeedCommand(GameClient.get().getPlayerUuid(), serverSpeed));
+        gameLoop.setSpeedMultiplier(serverSpeed);
+        speedButton.setText("▶▶  " + serverSpeed + "×");
+        speedButton.setStyle(serverSpeed > 1
+                ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
+                  + " -fx-font-size: 13; -fx-cursor: hand; -fx-background-radius: 8;"
+                  + " -fx-padding: 7 16 7 16;"
+                : "");
     }
 
     @FXML
@@ -1153,15 +838,7 @@ public class GameController {
         dlg.setHeaderText("Neuer Name:");
         dlg.showAndWait().ifPresent(name -> {
             if (name.isBlank()) return;
-            if (serverMode) {
-                sendCmd(new RenameRouteCommand(
-                    GameClient.get().getPlayerUuid(), selected.getId(), name.strip()));
-            } else {
-                selected.setName(name.strip());
-                if (world.getCurrentSave() != null)
-                    routeDao.updateName(selected.getId(), name.strip());
-                routeListView.refresh();
-            }
+            sendCmd(new RenameRouteCommand(GameClient.get().getPlayerUuid(), selected.getId(), name.strip()));
         });
     }
 
@@ -1169,29 +846,14 @@ public class GameController {
     public void onToggleRoute() {
         Route selected = routeListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        if (serverMode) {
-            sendCmd(new ToggleRouteCommand(GameClient.get().getPlayerUuid(), selected.getId()));
-        } else {
-            selected.setActive(!selected.isActive());
-            routeListView.refresh();
-            gameView.render();
-        }
+        sendCmd(new ToggleRouteCommand(GameClient.get().getPlayerUuid(), selected.getId()));
     }
 
     @FXML
     public void onDeleteRoute() {
         Route selected = routeListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        if (serverMode) {
-            sendCmd(new DeleteRouteCommand(GameClient.get().getPlayerUuid(), selected.getId()));
-        } else {
-            for (Train t : selected.getTrains()) t.setRoute(null);
-            selected.getTrains().clear();
-            world.getRoutes().remove(selected);
-            if (world.getCurrentSave() != null) routeDao.delete(selected.getId());
-            trainListView.refresh();
-            gameView.render();
-        }
+        sendCmd(new DeleteRouteCommand(GameClient.get().getPlayerUuid(), selected.getId()));
     }
 
     @FXML
@@ -1205,54 +867,22 @@ public class GameController {
         ChoiceDialog<Route> dlg = new ChoiceDialog<>(world.getRoutes().getFirst(), world.getRoutes());
         dlg.setTitle("Route zuweisen");
         dlg.setHeaderText("Route für diesen Zug:");
-        dlg.showAndWait().ifPresent(route -> {
-            if (serverMode) {
-                sendCmd(new AssignTrainCommand(
-                    GameClient.get().getPlayerUuid(), selected.getId(), route.getId()));
-            } else {
-                if (selected.getRoute() != null) selected.getRoute().getTrains().remove(selected);
-                selected.setRoute(route);
-                route.getTrains().add(selected);
-                spawnNewTrainOnRoute(selected, route);
-                trainListView.refresh();
-                routeListView.refresh();
-            }
-        });
+        dlg.showAndWait().ifPresent(route ->
+            sendCmd(new AssignTrainCommand(GameClient.get().getPlayerUuid(), selected.getId(), route.getId())));
     }
 
     @FXML
     public void onUnassignTrain() {
         Train selected = trainListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        if (serverMode) {
-            sendCmd(new UnassignTrainCommand(GameClient.get().getPlayerUuid(), selected.getId()));
-        } else {
-            if (selected.getRoute() != null) {
-                selected.getRoute().getTrains().remove(selected);
-                selected.setRoute(null);
-            }
-            trainListView.refresh();
-            routeListView.refresh();
-        }
+        sendCmd(new UnassignTrainCommand(GameClient.get().getPlayerUuid(), selected.getId()));
     }
 
     @FXML
     public void onSellTrain() {
         Train selected = trainListView.getSelectionModel().getSelectedItem();
         if (selected == null) return;
-        if (serverMode) {
-            sendCmd(new SellTrainCommand(GameClient.get().getPlayerUuid(), selected.getId()));
-        } else {
-            if (selected.getRoute() != null) {
-                selected.getRoute().getTrains().remove(selected);
-                selected.setRoute(null);
-            }
-            world.getTrains().remove(selected);
-            double refund = selected.getType().buyCost() * 0.5;
-            world.getEconomy().addBalance(refund);
-            if (world.getCurrentSave() != null) trainDao.delete(selected.getId());
-            showToast("Zug verkauft. Rückgabe: " + formatCurrency(refund), false);
-        }
+        sendCmd(new SellTrainCommand(GameClient.get().getPlayerUuid(), selected.getId()));
     }
 
     // ── Hilfsmethoden ────────────────────────────────────────────────────────
@@ -1270,23 +900,14 @@ public class GameController {
 
     private void activateBuildRoute() {
         Color color = colorGen.generateRouteColor();
-        if (serverMode) {
-            Route localRoute = new Route(-1, color);
-            pendingRouteColorHex = localRoute.getColorHex().toLowerCase();
-            activeRoute  = localRoute;
-            activeRouteId = -1;
-            setBuildMode(BuildMode.BUILD_ROUTE);
-            setStatus("Warte auf Server...");
-            gameView.setActiveRouteHighlight(localRoute);
-            sendCmd(new CreateRouteCommand(GameClient.get().getPlayerUuid(), localRoute.getColorHex()));
-        } else {
-            Route route = new Route(world.nextRouteId(), color);
-            activeRoute  = route;
-            setBuildMode(BuildMode.BUILD_ROUTE);
-            setStatus("Strecke anklicken → Route aufbauen.  ESC = Fertig.");
-            gameView.setActiveRouteHighlight(route);
-            showToast("Klicke auf eine Strecke, um die Route aufzubauen. ESC zum Abschließen.", false);
-        }
+        Route localRoute = new Route(-1, color);
+        pendingRouteColorHex = localRoute.getColorHex().toLowerCase();
+        activeRoute  = localRoute;
+        activeRouteId = -1;
+        setBuildMode(BuildMode.BUILD_ROUTE);
+        setStatus("Warte auf Server...");
+        gameView.setActiveRouteHighlight(localRoute);
+        sendCmd(new CreateRouteCommand(GameClient.get().getPlayerUuid(), localRoute.getColorHex()));
     }
 
     private void cancelBuildMode() {
@@ -1313,118 +934,16 @@ public class GameController {
         // TODO: selection + delete implementieren
     }
 
-    // ── Öffentliche Einstiegspunkte ───────────────────────────────────────────
-
-    public void startNewGame(SaveGame save) {
-        world.setCurrentSave(save);
-        setupTutorial(true);
-    }
-
-    public void loadGame(SaveGame save) {
-        world.setCurrentSave(save);
-        int id = save.getId();
-
-        List<Station> stations = stationDao.findAll(id);
-        world.getStations().addAll(stations);
-        Map<Integer, Station> stationMap = stations.stream()
-                .collect(Collectors.toMap(Station::getId, s -> s));
-
-        world.getTracks().addAll(trackDao.findAll(id, stationMap));
-
-        List<Route> routes = routeDao.findAll(id, stationMap);
-        world.getRoutes().addAll(routes);
-        Map<Integer, Route> routeMap = routes.stream()
-                .collect(Collectors.toMap(Route::getId, r -> r));
-
-        List<Train> trains = trainDao.findAll(id, routeMap);
-        world.getTrains().addAll(trains);
-        for (Train t : trains) {
-            if (t.getRoute() != null) t.getRoute().getTrains().add(t);
-        }
-        for (Route r : world.getRoutes()) distributeTrainsOnRoute(r);
-
-        economyDao.load(id, world.getEconomy(), world.getSatisfaction());
-
-        stations.stream().mapToInt(Station::getId).max()
-                .ifPresent(max -> world.setNextStationId(max + 1));
-        world.getTracks().stream().mapToInt(Track::getId).max()
-                .ifPresent(max -> world.setNextTrackId(max + 1));
-        routes.stream().mapToInt(Route::getId).max()
-                .ifPresent(max -> world.setNextRouteId(max + 1));
-        trains.stream().mapToInt(Train::getId).max()
-                .ifPresent(max -> world.setNextTrainId(max + 1));
-
-        gameView.render();
-    }
-
-    // ── Speichern ─────────────────────────────────────────────────────────────
-
-    private void saveGameToDB() {
-        if (world.getCurrentSave() == null) return;
-        int id = world.getCurrentSave().getId();
-        try {
-            var conn = at.htl.afterfall.persistence.DatabaseManager.getConnection();
-            conn.setAutoCommit(false);
-            try {
-                trainDao.deleteAllBySaveId(id);
-                routeDao.deleteAllBySaveId(id);
-                trackDao.deleteAllBySaveId(id);
-                stationDao.deleteAllBySaveId(id);
-
-                for (Station s : world.getStations()) { int dbId = stationDao.insert(id, s); s.setId(dbId); }
-                for (Track t   : world.getTracks())   { int dbId = trackDao.insert(id, t);   t.setId(dbId); }
-                for (Route r   : world.getRoutes())   routeDao.insert(id, r);
-                for (Train t   : world.getTrains()) { int dbId = trainDao.insert(id, t); t.setId(dbId); }
-
-                economyDao.save(id, world.getEconomy(), world.getSatisfaction());
-                saveGameDao.updateLastSaved(id);
-                conn.commit();
-            } catch (Exception e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (Exception e) {
-            showToast("Fehler beim Speichern: " + e.getMessage(), true);
-        }
-    }
-
-    private void saveGame() {
-        if (serverMode) {
-            showToast("Spielstand wird automatisch gespeichert.", false);
-            return;
-        }
-        if (world.getCurrentSave() == null) return;
-        saveGameToDB();
-        RankingClient.submitScore(
-            world.getEconomy().getNetWorth(),
-            rank -> showToast("Rang #" + rank + " in der Rangliste! 🏆", false),
-            () -> showToast("Rangliste nicht erreichbar – Score nicht übermittelt.", true)
-        );
-        showToast("Spielstand gespeichert.", false);
-    }
-
     // ── Zurück zum Hauptmenü ──────────────────────────────────────────────────
 
     @FXML
     public void onMainMenu() {
         gameLoop.stop();
-        if (serverMode) {
-            try {
-                GameClient.get().send(new QuitGameCommand(GameClient.get().getPlayerUuid()));
-            } catch (Exception e) {
-                showToast("Verbindungsfehler – Kehre zum Menü zurück.", true);
-                navigateToMenu();
-            }
-        } else {
-            saveGameToDB();
-            double netWorth = world.getEconomy().getNetWorth();
-            RankingClient.submitScore(
-                netWorth,
-                rank -> { showToast("Rang #" + rank + " in der Rangliste! 🏆", false); navigateToMenu(); },
-                ()   -> { showToast("Rangliste nicht erreichbar.", true); navigateToMenu(); }
-            );
+        try {
+            GameClient.get().send(new QuitGameCommand(GameClient.get().getPlayerUuid()));
+        } catch (Exception e) {
+            showToast("Verbindungsfehler – Kehre zum Menü zurück.", true);
+            navigateToMenu();
         }
     }
 

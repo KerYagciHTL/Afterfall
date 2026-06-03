@@ -10,8 +10,6 @@ import javafx.application.Platform;
 
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -143,14 +141,11 @@ public class GameClient {
     // ── UUID/Name management ─────────────────────────────────────────────────
 
     public static String loadOrCreateUuid() {
-        Path file = DatabaseManager.getDataDir().resolve("player-uuid.txt");
-        try {
-            if (Files.exists(file)) return Files.readString(file).strip();
-            String uuid = UUID.randomUUID().toString();
-            Files.writeString(file, uuid);
-            return uuid;
-        } catch (Exception e) {
-            return UUID.randomUUID().toString();
-        }
+        DatabaseManager.initSchema();
+        String uuid = DatabaseManager.getPlayerValue("uuid");
+        if (uuid != null && !uuid.isBlank()) return uuid;
+        uuid = UUID.randomUUID().toString();
+        DatabaseManager.setPlayerValue("uuid", uuid);
+        return uuid;
     }
 }

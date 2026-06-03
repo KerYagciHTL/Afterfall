@@ -3,13 +3,11 @@ package at.htl.afterfall.persistence;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 public class DatabaseManager {
     private static final String DB_URL = resolveDbUrl();
+    private static Connection connection;
 
     public static Path getDataDir() {
         String os   = System.getProperty("os.name", "").toLowerCase();
@@ -30,12 +28,10 @@ public class DatabaseManager {
     private static String resolveDbUrl() {
         return "jdbc:sqlite:" + getDataDir().resolve("afterfall.db");
     }
-    private static Connection connection;
 
     public static Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
             connection = DriverManager.getConnection(DB_URL);
-            connection.createStatement().execute("PRAGMA foreign_keys = ON");
         }
         return connection;
     }
@@ -43,67 +39,31 @@ public class DatabaseManager {
     public static void initSchema() {
         try (Statement stmt = getConnection().createStatement()) {
             stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS save_games (
-                    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name       TEXT    NOT NULL,
-                    created_at TEXT    NOT NULL,
-                    last_saved TEXT    NOT NULL
+                CREATE TABLE IF NOT EXISTS player (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
                 )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS stations (
-                    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-                    save_id INTEGER NOT NULL REFERENCES save_games(id) ON DELETE CASCADE,
-                    name    TEXT    NOT NULL,
-                    x       REAL    NOT NULL,
-                    y       REAL    NOT NULL
-                )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS tracks (
-                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                    save_id      INTEGER NOT NULL REFERENCES save_games(id) ON DELETE CASCADE,
-                    from_station INTEGER NOT NULL REFERENCES stations(id),
-                    to_station   INTEGER NOT NULL REFERENCES stations(id),
-                    length       REAL    NOT NULL
-                )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS routes (
-                    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                    save_id   INTEGER NOT NULL REFERENCES save_games(id) ON DELETE CASCADE,
-                    color_hex TEXT    NOT NULL,
-                    active    INTEGER NOT NULL DEFAULT 1
-                )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS route_stops (
-                    route_id   INTEGER NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
-                    station_id INTEGER NOT NULL REFERENCES stations(id),
-                    position   INTEGER NOT NULL,
-                    PRIMARY KEY (route_id, position)
-                )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS trains (
-                    id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                    save_id  INTEGER NOT NULL REFERENCES save_games(id) ON DELETE CASCADE,
-                    type     TEXT    NOT NULL,
-                    route_id INTEGER REFERENCES routes(id),
-                    active   INTEGER NOT NULL DEFAULT 1
-                )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS economy (
-                    save_id      INTEGER PRIMARY KEY REFERENCES save_games(id) ON DELETE CASCADE,
-                    balance      REAL    NOT NULL DEFAULT 10000,
-                    net_worth    REAL    NOT NULL DEFAULT 10000,
-                    ticket_price REAL    NOT NULL DEFAULT 1.5
-                )""");
-            stmt.executeUpdate("""
-                CREATE TABLE IF NOT EXISTS satisfaction (
-                    save_id INTEGER PRIMARY KEY REFERENCES save_games(id) ON DELETE CASCADE,
-                    value   REAL    NOT NULL DEFAULT 50.0
-                )""");
-            // Migrations
-            try { stmt.executeUpdate("ALTER TABLE routes ADD COLUMN circular INTEGER NOT NULL DEFAULT 0"); } catch (SQLException ignored) {}
-            try { stmt.executeUpdate("ALTER TABLE routes ADD COLUMN name TEXT NOT NULL DEFAULT ''");      } catch (SQLException ignored) {}
         } catch (SQLException e) {
             throw new RuntimeException("DB-Schema-Init fehlgeschlagen", e);
         }
+    }
+
+    public static String getPlayerValue(String key) {
+        try (PreparedStatement ps = getConnection().prepareStatement(
+                "SELECT value FROM player WHERE key = ?")) {
+            ps.setString(1, key);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getString(1);
+        } catch (SQLException ignored) {}
+        return null;
+    }
+
+    public static void setPlayerValue(String key, String value) {
+        try (PreparedStatement ps = getConnection().prepareStatement(
+                "INSERT INTO player(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")) {
+            ps.setString(1, key);
+            ps.setString(2, value);
+            ps.executeUpdate();
+        } catch (SQLException ignored) {}
     }
 }
