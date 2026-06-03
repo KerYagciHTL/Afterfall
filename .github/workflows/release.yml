@@ -45,9 +45,10 @@ jobs:
           rm -f "${CFG}.bak"
 
       - name: Maven package
-        working-directory: frontend
         shell: bash
-        run: mvn clean package -DskipTests -q
+        run: |
+          mvn -f protocol/pom.xml install -DskipTests -q
+          mvn -f frontend/pom.xml clean package -DskipTests -q
 
       - name: jpackage
         shell: bash
