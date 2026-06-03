@@ -47,6 +47,7 @@ jobs:
       - name: Maven package
         shell: bash
         run: |
+          mvn -N install -DskipTests -q
           mvn -f protocol/pom.xml install -DskipTests -q
           mvn -f frontend/pom.xml clean package -DskipTests -q
 
