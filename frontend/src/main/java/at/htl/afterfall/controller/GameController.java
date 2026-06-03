@@ -786,6 +786,7 @@ public class GameController {
     public void onSpeedToggle() {
         serverSpeed = serverSpeed % 3 + 1;
         sendCmd(new SetSpeedCommand(GameClient.get().getPlayerUuid(), serverSpeed));
+        gameLoop.setSpeedMultiplier(serverSpeed);
         speedButton.setText("▶▶  " + serverSpeed + "×");
         speedButton.setStyle(serverSpeed > 1
                 ? "-fx-background-color: #7c3aed; -fx-text-fill: white;"
